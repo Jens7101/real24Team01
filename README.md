@@ -25,5 +25,19 @@ git config --list
 - Dan refresh und anschliessend Commit auswählen  
 <img src="https://github.com/user-attachments/assets/3da7c544-ecfd-4612-85ae-8c482a8d015b" alt="image" style="width:50%; height:auto;">  
 
+## Virtuelle Umgebung venv erstellen/aktualisieren
+### Neu erstellen
+1. Projekt klonen
+2. In Visual Studio Verzeichnis auswählen
+3. Im Terminal folgende Eingaben machen
+   - python -m venv venv
+   - venv/Scripts/activate
+   - pip install -r requirements.txt
 
-## PV-Reinigungsroboter Rabot
+### Aktuallisieren nachdem neue Bibliothek installiert wurde
+1. Im Terminal folgende Eingabe machen
+   - pip freeze > requirements.txt
+2. Auf Github laden
+3. Danach müssen die anderen Benutzer die venv aktualisieren
+   - venv/Scripts/activate
+   - pip install -r requirements.txt
