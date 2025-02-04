@@ -9,7 +9,7 @@ gpio.setValue(LED1, False)
 
 while True:
         gpio.setValue(LED1, True)
-        time.sleep(0.4)
+        time.sleep(1)
         gpio.setValue(LED1, False)
-        time.sleep(0.8)
+        time.sleep(2)
 
