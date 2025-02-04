@@ -7,7 +7,8 @@ class Robi:
         Anschliessend reinigt er das Panel von Oben nach unten.
         """
 
-        Zustand = Enum ('Zustand', ['RobiFaehrtVorwaerts', 'RobiFaehrtRueckwaerts', 'RobiDrehtAb'])
+        Zustand = Enum ('Zustand', ['RobiDrehenBisHorizontal', 'RobiFaehrtVorärts1', 'RobiViertelDrehungLinks', 'RobiFaertVorwärts2', 'RobiDreht180', 
+        'ViertelDrehungRechts_Zy' , 'ViertelDrehungLinks_Zy', 'RobiFaertVorwärts3', 'RobiFaertRunter'])
 
         print ("PLANLOS FAHREN")
         anzahlWandberuehrungen = 0
@@ -22,28 +23,40 @@ class Robi:
             time.sleep(1 / 1000)
             match zustand:
                 
-                case Zustand.RobiFaehrtVorwaerts:
-                    self.robi.getDistSensorValues ()
+                case Zustand.RobiDrehenBisHorizontal:
+                    '''self.robi.getDistSensorValues ()
                     if self.anWand ():
                         self.bodenSensorWerteAusgeben ()
                         self.robi.drive (-10)
                         uhr.starten (1000)
                         zustand = Zustand.RobiFaehrtRueckwaerts
-                        print ("Robi faehrt rueckwaerts")
+                        print ("Robi faehrt rueckwaerts")'''
 
-                case Zustand.RobiFaehrtRueckwaerts:
-                    if uhr.abgelaufen():
+                case Zustand.RobiFaehrtVorärts1:
+                   ''' if uhr.abgelaufen():
                         self.robi.turn (20)
                         uhr.starten (2000)
                         zustand = Zustand.RobiDrehtAb
-                        print ("Robi dreht ab")
+                        print ("Robi dreht ab")'''
 
-                case Zustand.RobiDrehtAb:
-                    if uhr.abgelaufen ():
+                case Zustand.RobiViertelDrehungLinks:
+                    '''if uhr.abgelaufen ():
                         anzahlWandberuehrungen += 1
                         self.robi.drive (5)
                         zustand = Zustand.RobiFaehrtVorwaerts
-                        print ("Robi faehrt vorwaerts")
+                        print ("Robi faehrt vorwaerts")'''
+
+                case Zustand.RobiFaertVorwärts2:
+
+                case Zustand.RobiDreht180:
+
+                case Zustand.ViertelDrehungRechts_Zy:
+
+                case Zustand.ViertelDrehungLinks_Zy:
+
+                case Zustand.RobiFaertVorwärts3:
+
+                case Zustand.RobiFahertRunter:
 
                 case _:
                     print ("Ungültiger Zustand: " + str(zustand))
