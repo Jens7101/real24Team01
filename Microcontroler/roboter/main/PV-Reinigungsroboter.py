@@ -10,7 +10,17 @@ class Robi:
         Zustand = Enum ('Zustand', ['RobiDrehenBisHorizontal', 'RobiFaehrtVorärts1', 'RobiViertelDrehungLinks', 'RobiFaertVorwärts2', 'RobiDreht180', 
         'ViertelDrehungRechts_Zy' , 'ViertelDrehungLinks_Zy', 'RobiFaertVorwärts3', 'RobiFaertRunter'])
 
-        print ("PLANLOS FAHREN")
+        # Sensoren Initialisieren
+        sensors = init_vl53l0x([0,1,2])
+        
+        # Gyrosensor Auslesen
+        Gyrosensor = sensors[0, 'pin des sensors']
+        zustand = Zustand.RobiDrehenBisHorizontal
+
+        for sensor in sensors:
+        print(sensor.read_distance())
+
+        print ("PANEL REINIGEN")
         anzahlWandberuehrungen = 0
         uhr = Sanduhr ()
         zustand = Zustand.RobiFaehrtVorwaerts
