@@ -12,7 +12,7 @@
             "console": "integratedTerminal"
         },
         { 
-            "name": "Remote\_Debugger",
+            "name": "Remote Debugger",
             "type": "debugpy",
             "request": "attach",
             "connect" : {

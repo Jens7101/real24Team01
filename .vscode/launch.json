@@ -5,15 +5,7 @@
     "version": "0.2.0",
     "configurations": [
     {
-        "name": "Python Debugger: Current File",
-        "type": "debugpy",
-        "request": "launch",
-        "program": "${file}",
-        "console": "integratedTerminal"
-
-    },
-    {
-        "name": "Remote\_Debugger",
+        "name": "Remote Debugger",
         "type": "debugpy",
         "request": "attach",
         "connect" : {
@@ -23,7 +15,7 @@
         "pathMappings": [
         {
             "localRoot": "${workspaceFolder}",
-            "remoteRoot": "/home/ost/"
+            "remoteRoot": "/home/ost/real24Team01"
             
         }
         ]
