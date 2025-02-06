@@ -1,3 +1,4 @@
+from enum import Enum
 from driver.vl53l0x_helper import init_vl53l0x
 import flink
 import time
@@ -5,15 +6,14 @@ import time
 
 class Robi:    
     
-    def Reinigen (self, maxWandberuehrungen):
+    def Reinigen (self, MaxDrehungen):
         """
         Der Roboter Fährt an den Oberen Rand des Pannels.
         dan fährt zur Linken obereb Ecke.
         Anschliessend reinigt er das Panel von Oben nach unten.
         """
 
-        Zustand = Enum ('Zustand', ['RobiDrehenBisHorizontal', 'RobiFaehrtVorärts1', 'RobiViertelDrehungLinks', 'RobiFaertVorwärts2', 'RobiDreht180', 
-        'ViertelDrehungRechts_Zy' , 'ViertelDrehungLinks_Zy', 'RobiFaertVorwärts3', 'RobiFaertRunter'])
+        Zustand = Enum ('Zustand', ['RobiDrehenBisHorizontal', 'RobiFaehrtVorärts1', 'RobiViertelDrehungLinks', 'RobiFaertVorwärts2', 'RobiDreht180', 'ViertelDrehungRechts_Zy' , 'ViertelDrehungLinks_Zy', 'RobiFaertVorwärts3', 'RobiFaertRunter'])
         
         print ("PANEL REINIGEN")
 
@@ -23,32 +23,28 @@ class Robi:
         # Gyrosensor Auslesen
         winkel = sensor auslesen
 
-        if winkel > 180: # Rechts drehen
-            rechtsdrehen
-        else: # Links drehen
-        
-
-        
-        anzahlWandberuehrungen = 0
-        uhr = Sanduhr ()
-        zustand = Zustand.RobiFaehrtVorwaerts
+        AnzahlDrehungen = 0
 
         self.robi.connect ()
         self.robi.drive (5)
-        print ("Robi faehrt vorwaerts")
+        if winkel > 180: # Rechts drehen
+            rechtsdrehen
+            print('Robi dreht rechts')
+        else: # Links drehen
+            print('Robi dreht links')
+        zustand = Zustand.RobiDrehenBisHorizontal
 
-        while anzahlWandberuehrungen < maxWandberuehrungen:
+        while AnzahlDrehungen > MaxDrehungen:
             time.sleep(1 / 1000)
             match zustand:
                 
                 case Zustand.RobiDrehenBisHorizontal:
-                    '''self.robi.getDistSensorValues ()
-                    if self.anWand ():
-                        self.bodenSensorWerteAusgeben ()
-                        self.robi.drive (-10)
-                        uhr.starten (1000)
-                        zustand = Zustand.RobiFaehrtRueckwaerts
-                        print ("Robi faehrt rueckwaerts")'''
+                    winkel = sensor auslesen
+                    if winkel == 0:
+                    self.robi.drive (5)
+                    zustand = Zustand.RobiFaehrtVorärts1
+                    print ("Robi fährt vorwärts")
+
 
                 case Zustand.RobiFaehrtVorärts1:
                    ''' if uhr.abgelaufen():
