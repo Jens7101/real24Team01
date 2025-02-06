@@ -1,3 +1,8 @@
+from driver.vl53l0x_helper import init_vl53l0x
+import flink
+import time
+
+
 class Robi:    
     
     def Reinigen (self, maxWandberuehrungen):
@@ -9,18 +14,21 @@ class Robi:
 
         Zustand = Enum ('Zustand', ['RobiDrehenBisHorizontal', 'RobiFaehrtVorärts1', 'RobiViertelDrehungLinks', 'RobiFaertVorwärts2', 'RobiDreht180', 
         'ViertelDrehungRechts_Zy' , 'ViertelDrehungLinks_Zy', 'RobiFaertVorwärts3', 'RobiFaertRunter'])
+        
+        print ("PANEL REINIGEN")
 
-        # Sensoren Initialisieren
-        sensors = init_vl53l0x([0,1,2])
+        # Initialisiere die ToF-Sensoren
+        tofs = init_vl53l0x([0, 1])
         
         # Gyrosensor Auslesen
-        Gyrosensor = sensors[0, 'pin des sensors']
-        zustand = Zustand.RobiDrehenBisHorizontal
+        winkel = sensor auslesen
 
-        for sensor in sensors:
-        print(sensor.read_distance())
+        if winkel > 180: # Rechts drehen
+            rechtsdrehen
+        else: # Links drehen
+        
 
-        print ("PANEL REINIGEN")
+        
         anzahlWandberuehrungen = 0
         uhr = Sanduhr ()
         zustand = Zustand.RobiFaehrtVorwaerts
@@ -58,17 +66,17 @@ class Robi:
 
                 case Zustand.RobiFaertVorwärts2:
 
-                case Zustand.RobiDreht180:
+                #case Zustand.RobiDreht180:
 
-                case Zustand.ViertelDrehungRechts_Zy:
+                #case Zustand.ViertelDrehungRechts_Zy:
 
-                case Zustand.ViertelDrehungLinks_Zy:
+                #case Zustand.ViertelDrehungLinks_Zy:
 
-                case Zustand.RobiFaertVorwärts3:
+                #case Zustand.RobiFaertVorwärts3:
 
-                case Zustand.RobiFahertRunter:
+                #case Zustand.RobiFahertRunter:
 
-                case _:
+                #case _:
                     print ("Ungültiger Zustand: " + str(zustand))
 
         self.robi.stop ()
