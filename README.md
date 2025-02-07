@@ -33,9 +33,12 @@ git config --list
 ```
 python -m venv venv
 ```
-   - python -m venv venv
-   - venv/Scripts/activate
-   - pip install -r requirements.txt
+```
+venv/Scripts/activate
+```
+```
+pip install -r requirements.txt
+```
 
 ### Aktuallisieren nachdem neue Bibliothek installiert wurde
 1. Im Terminal folgende Eingabe machen
