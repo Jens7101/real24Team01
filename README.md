@@ -30,14 +30,26 @@ git config --list
 1. Projekt klonen
 2. In Visual Studio Verzeichnis auswählen
 3. Im Terminal folgende Eingaben machen
-   - python -m venv venv
-   - venv/Scripts/activate
-   - pip install -r requirements.txt
+```
+python -m venv venv
+```
+```
+venv/Scripts/activate
+```
+```
+pip install -r requirements.txt
+```
 
 ### Aktuallisieren nachdem neue Bibliothek installiert wurde
 1. Im Terminal folgende Eingabe machen
-   - pip freeze > requirements.txt
-2. Auf Github laden
-3. Danach müssen die anderen Benutzer die venv aktualisieren
-   - venv/Scripts/activate
-   - pip install -r requirements.txt
+```
+pip freeze > requirements.txt
+```
+3. Auf Github laden
+4. Danach müssen die anderen Benutzer die venv aktualisieren
+```
+venv/Scripts/activate
+```
+```
+pip install -r requirements.txt
+```
