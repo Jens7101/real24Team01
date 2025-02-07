@@ -1,8 +1,6 @@
 import importlib
-import driver.vl53l0x_helper
-importlib.reload(driver.vl53l0x_helper)
 
-from driver.vl53l0x_helper import init_vl53l0xx
+from vl53l0x import init_vl53l0xx
 
 
 # I2C-Busnummer (je nach Board kann das 0 oder 1 sein, bitte mit `i2cdetect -l` prüfen)

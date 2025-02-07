@@ -24,7 +24,7 @@ def select_mux_channel(bus, channel):
     bus.write_byte(PA_HUB_I2C_ADDRESS, 1 << channel)
     time.sleep(0.01)  # Kleine Verzögerung nach Kanalwechsel
 
-def init_vl53l0x(i2c_bus_number, mux_channels):
+def init_vl53l0xx(i2c_bus_number, mux_channels):
     """
     Initialisiert mehrere VL53L0X-Sensoren über den PA.Hub Multiplexer.
 
@@ -48,7 +48,8 @@ def init_vl53l0x(i2c_bus_number, mux_channels):
         select_mux_channel(bus, channel)  # Wähle den entsprechenden Kanal
 
         tof = VL53L0X.VL53L0X(0x29)  # Standardadresse des Sensors
-        tof.change_address(address)  # Sensor auf neue Adresse setzen
+        tof.device_address = address  # Sensor auf neue Adresse setzen
+        
         address += 2  # Nächste Adresse für den nächsten Sensor
 
         tof.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
