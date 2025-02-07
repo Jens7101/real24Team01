@@ -30,6 +30,9 @@ git config --list
 1. Projekt klonen
 2. In Visual Studio Verzeichnis auswählen
 3. Im Terminal folgende Eingaben machen
+```
+python -m venv venv
+```
    - python -m venv venv
    - venv/Scripts/activate
    - pip install -r requirements.txt
