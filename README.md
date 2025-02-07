@@ -1,5 +1,5 @@
 # Real24Team01
-## GitHub einrichten
+# GitHub einrichten
 ---
 1. Lade Git für Windows herunter und installiere es.
 2. Git konfigurieren  
