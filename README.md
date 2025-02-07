@@ -122,7 +122,7 @@ mkdocs serve
 
 1. Lade **MSYS2** von der offiziellen Seite herunter:  
     👉 [https://www.msys2.org/](https://www.msys2.org/)
-2. Installiere MSYS2 und öffne die **MSYS2 MinGW 64-bit Shell**.
+2. Installiere MSYS2 und öffne die **MSYS2 "MinGW 64-bit" Shell**.
 3. Führe folgenden Befehl aus:
 ```
 pacman -S mingw-w64-x86_64-cairo
