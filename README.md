@@ -1,8 +1,8 @@
 # Real24Team01
 # GitHub einrichten
 ---
-1. Lade Git für Windows herunter und installiere es.
-2. Git konfigurieren  
+1. Lade "Git für Windows" herunter und installiere es. [Link](https://gitforwindows.org/)
+3. Git konfigurieren  
 - Öffne Git Bash oder die Eingabeaufforderung und gib Folgendes ein:  
 git config --global user.name "Dein Name"  
 git config --global user.email "deine@email.com"  
