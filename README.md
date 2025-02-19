@@ -62,7 +62,7 @@ venv/Scripts/activate
 pip install -r requirements.txt
 ```
 
-# MkDocs installieren
+# MkDocs
 ---
 ## Use ov MkDocs
 
