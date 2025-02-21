@@ -18,7 +18,7 @@ python Sensoren_Vorgeben.py -g 0 1 -o 2 3
 Haben keinen Treiber. Laut Michael Zimmeli mit absprachen von Urs Graf: Hoher Zeitaufwand um Treiber zu erstellen
 
 ### MPU6050
-Beschreibung:
-- 3-axis gyroscope and 3-axis accelerometer
-Treiber von OST bereits erstellt
+Beschreibung:  
+- 3-axis gyroscope and 3-axis accelerometer  
+Treiber von OST bereits erstellt  
 [Datasheet](https://wiki.ost.ch/display/EDS/Sensors?preview=/346161158/413237316/MPU-6000-Datasheet1.pdf)

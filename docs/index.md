@@ -2,7 +2,9 @@
 
 # Putty
 ---
-Programm ausführen mit debuger
+## Programm ausführen mit debuger
 ```Python
 python -m debugpy --listen 192.168.7.2:6000 --wait-for-client ./
 ```
+## Programm unterbrechen
+- Ctrl + z
