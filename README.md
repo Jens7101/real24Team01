@@ -62,7 +62,7 @@ venv/Scripts/activate
 pip install -r requirements.txt
 ```
 
-# MkDocs installieren
+# MkDocs
 ---
 ## Use ov MkDocs
 
@@ -123,9 +123,7 @@ mkdocs serve
 - See this yaml file
 ## Debugging
 ---
-### OSError: no library called "cairo-2" was found
-##### **Option 1: Installiere Cairo über MSYS2 (empfohlen)**
-
+### OSError: no library called "cairo-2" was found  
 1. Lade **MSYS2** von der offiziellen Seite herunter:  
     👉 [https://www.msys2.org/](https://www.msys2.org/)
 2. Installiere MSYS2 und öffne die **MSYS2 "MinGW 64-bit" Shell**.
