@@ -29,6 +29,8 @@ Treiber von OST bereits erstellt
 
 [Link Rasperipy Webseite](https://pypi.org/project/mpu6050-raspberrypi/)  
 [Link Datasheet](https://wiki.ost.ch/display/EDS/Sensors?preview=/346161158/413237316/MPU-6000-Datasheet1.pdf)  
+[Link Arduino anschluss](https://components101.com/sensors/mpu6050-module)  
+
 
 
 Befehl zum installieren:  
