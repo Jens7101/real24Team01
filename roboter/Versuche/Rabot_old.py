@@ -1,9 +1,20 @@
 from enum import Enum
 from driver.vl53l0x_helper import init_vl53l0x
+from mpu6050 import mpu6050
 import flink
 import time
 
-class Robi:    
+class Rabot:
+
+    def __init__(self):
+        ## mpu6050 Sensor erstellen
+        mpuSensor = mpu6050(0x68)
+
+        ## Distance Sensor
+
+        '''Stellvertreter Objekt des Roboters erstellen'''
+        self.rabot = 
+
     
     def Reinigen (self, MaxDrehungen):
         """

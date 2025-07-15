@@ -2,11 +2,10 @@ import importlib
 from vl53l0x import init_vl53l0xx
 from vl53l0x import select_mux_channel
 import smbus
+import flink
+import time
 
-'''
 
-
-'''
 
 
 
@@ -15,6 +14,14 @@ I2C_BUS = 0
 
 # Liste der Multiplexer-Kanäle, an denen die VL53L0X-Sensoren angeschlossen sind
 MUX_CHANNELS = [0, 1]  # Beispiel: Sensoren an Kanal 0 und 1 des PA.Hub
+
+'''XSHUT über die GPIO's deaktivieren und wieder aktivieren, damit die initialiseirung neu funktioniert.'''
+gpio = flink.FlinkGPIO()
+for pin in MUX_CHANNELS:
+    gpio.setDir(pin, True)
+    gpio.setValue(pin, False)
+    time.sleep(0.01)
+    gpio.setValue(pin, True)
 
 # Initialisiere die ToF-Sensoren über den PA.Hub
 tofs = init_vl53l0xx(I2C_BUS, MUX_CHANNELS)
