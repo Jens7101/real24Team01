@@ -12,6 +12,8 @@
 ```
 python tofTest.py -g 0 -o 0
 python Sensoren_Vorgeben.py -g 0 1 -o 2 3
+# Aktuelle finale Datei
+python Sensor_Hub_04.py
 ```
 
 ### PA.HUB 2 Unit
@@ -38,8 +40,12 @@ Treiber von OST bereits erstellt
 |SCL| MIO 10|
 |SDA| MIO 11|
 
+#### Testen
+```python
+python MPU6050_02.py
+```
 
-Befehl zum installieren:  
+#### Befehl zum installieren:  
 ```python
 # muss noch etwas davor gehängt werden, irgendwas mit Python
 pip install mpu6050-raspberrypi
