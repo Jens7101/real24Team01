@@ -15,9 +15,6 @@ class Rabot:
     
     def test (self):
         # Daten auslesen
-        print("Beschleunigung:", self.rabot.mpuSensor.get_accel_data())
-        print("Gyroskop:", self.rabot.mpuSensor.get_gyro_data())
-        print("Temperatur:", self.rabot.mpuSensor.get_temp())
         self.rabot.getDistSensorValues()
         print(self.rabot.sensorwerte)
 

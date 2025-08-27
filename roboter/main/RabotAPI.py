@@ -38,12 +38,20 @@ class RabotAPI:
         
     def getDistSensorValues(self):
         self.bus = smbus.SMBus(self.I2C_BUS)  # I2C-Bus öffnen
-
         i = 0
+        self.sensorwerte[i]= self.mpuSensor.get_accel_data()
+        i = 1
+        self.sensorwerte[i]= self.mpuSensor.get_gyro_data()
+        i = 2
+        self.sensorwerte[i]= self.mpuSensor.get_temp()
+        i = 3
+        muxChanel = 0
+
         for tof in self.tofs:
-            select_mux_channel(self.bus, self.MUX_CHANNELS[i])
+            select_mux_channel(self.bus, self.MUX_CHANNELS[muxChanel])
             self.sensorwerte[i] = tof.get_distance()
             i += 1
+            muxChanel += 1
 
 
 
