@@ -43,7 +43,7 @@ class Rabot:
                             print('Rabot Stop')
 
                 case Zustand.RabotStop:
-                    self.rabot.stop
+                    self.rabot.stop()
                     ProgrammStatus = False
 
                 case _:
@@ -56,5 +56,5 @@ class Rabot:
 
 if __name__ == '__main__':
     rabot = Rabot()
-    rabot.test()
-    #rabot.drivestraight(50)
+    # rabot.test()
+    rabot.drivestraight(50)
