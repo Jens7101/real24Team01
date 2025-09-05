@@ -23,7 +23,7 @@ class RabotAPI:
         
 
         # Liste der Multiplexer-Kanäle, an denen die VL53L0X-Sensoren angeschlossen sind
-        self.MUX_CHANNELS = [0, 1]  # Beispiel: Sensoren an Kanal 0 und 1 des PA.Hub
+        self.MUX_CHANNELS = [0, 1, 2, 3]  # Beispiel: Sensoren an Kanal 0 und 1 des PA.Hub
 
         '''XSHUT über die GPIO's deaktivieren und wieder aktivieren, damit die initialiseirung neu funktioniert.'''
         self.gpio = flink.FlinkGPIO()
@@ -35,6 +35,15 @@ class RabotAPI:
 
         # Initialisiere die ToF-Sensoren über den PA.Hub
         self.tofs = init_vl53l0xx(self.I2C_BUS, self.MUX_CHANNELS)
+
+        ## -----------Motoren------------
+        self.rangeForward = [12, 13]
+        self.rangeBackward = [14, 15]
+
+        for pin in self.rangeForward + self.rangeBackward:  # Listen zusammenführen
+            self.gpio.setDir(pin, True)
+            self.gpio.setValue(pin, False)
+
         
     def getDistSensorValues(self):
         self.bus = smbus.SMBus(self.I2C_BUS)  # I2C-Bus öffnen
@@ -52,6 +61,21 @@ class RabotAPI:
             self.sensorwerte[i] = tof.get_distance()
             i += 1
             muxChanel += 1
+
+    def drive(self, speed: int):
+        # Speed range: 100 bis -100. - -> drive backword
+
+        # --- Simulation
+        if speed > 0:
+            for pin in self.rangeForward:
+                self.gpio.setValue(pin, True)
+        if speed < 0:
+            for pin in self.rangeBackward:
+                self.gpio.setValue(pin, True)
+
+    def stop(self):
+        for pin in self.rangeForward + self.rangeBackward:
+            self.gpio.setValue(pin, False)
 
 
 
