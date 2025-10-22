@@ -7,6 +7,7 @@ from vl53l0x import select_mux_channel
 import smbus
 import flink
 import time
+import math
 
 
 class RabotAPI:
@@ -76,6 +77,36 @@ class RabotAPI:
     def stop(self):
         for pin in self.rangeForward + self.rangeBackward:
             self.gpio.setValue(pin, False)
+    
+    def getPitchRoll(self):
+        dt = 0.02  # Abtastzeit (20 ms → 50 Hz)
+        alpha = 0.98  # Filterkonstante
+
+        # Anfangswerte aus Beschleunigung
+        accel = self.mpuSensor.get_accel_data()
+        ax, ay, az = accel['x'], accel['y'], accel['z']
+        roll = math.degrees(math.atan2(ay, az))
+        pitch = math.degrees(math.atan2(-ax, math.sqrt(ay**2 + az**2)))
+
+        # Gyroskopdaten
+        gyro = self.mpuSensor.get_gyro_data()
+        gx, gy, gz = gyro['x'], gyro['y'], gyro['z']
+
+        # Integriere Gyro-Daten
+        roll_gyro = roll + gx * dt
+        pitch_gyro = pitch + gy * dt
+
+        # Beschleunigungsdaten
+        accel = self.mpuSensor.get_accel_data()
+        ax, ay, az = accel['x'], accel['y'], accel['z']
+        roll_acc = math.degrees(math.atan2(ay, az))
+        pitch_acc = math.degrees(math.atan2(-ax, math.sqrt(ay**2 + az**2)))
+
+        # Komplementärfilter
+        roll = alpha * roll_gyro + (1 - alpha) * roll_acc
+        pitch = alpha * pitch_gyro + (1 - alpha) * pitch_acc
+
+        return roll, pitch
 
 
 

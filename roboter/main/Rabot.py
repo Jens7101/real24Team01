@@ -49,7 +49,30 @@ class Rabot:
                 case _:
                     print ("Ungültiger Zustand: " + str(zustand))
 
-        
+
+    def alignApwards(self):
+
+        Zustand = Enum ('Zustand', ['RabotNotAligned', 'RabotAligned'])
+        zustand = Zustand.RabotNotAligned
+        ProgrammStatus = True
+
+        print("Rabot Aligns Apwards")
+
+        while ProgrammStatus:
+            time.sleep(1 / 1000) # Frequenz in der die Zustände abgefragt werden
+            match zustand:
+                case Zustand.RabotNotAligned:
+                    pitch, roll = self.rabot.getPitchRoll()
+                    print("Pitch: " + str(pitch) + " Roll: " + str(roll))
+                    if abs(roll) < 1:
+                        zustand = Zustand.RabotAligned
+                        print("Rabot ist ausgerichtet")
+
+                case Zustand.RabotAligned:
+                    ProgrammStatus = False
+
+                case _:
+                    print ("Ungültiger Zustand: " + str(zustand)) 
 
 
 
@@ -57,4 +80,5 @@ class Rabot:
 if __name__ == '__main__':
     rabot = Rabot()
     # rabot.test()
-    rabot.drivestraight(50)
+    # rabot.drivestraight(50)
+    rabot.alignApwards()
