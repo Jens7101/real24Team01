@@ -34,7 +34,7 @@ class Rabot:
                 case Zustand.RabotDrive:
                     time.sleep(4)
                     self.rabot.getDistSensorValues()
-                    panelSensors = self.rabot.sensorwerte[3:7]
+                    panelSensors = self.rabot.sensorwerte[0:4]
                     for sensor in panelSensors:
                         print(sensor)
                     for sensor in panelSensors:
@@ -62,9 +62,9 @@ class Rabot:
             time.sleep(1 / 1000) # Frequenz in der die Zustände abgefragt werden
             match zustand:
                 case Zustand.RabotNotAligned:
-                    pitch, roll = self.rabot.getPitchRoll()
-                    print("Pitch: " + str(pitch) + " Roll: " + str(roll))
-                    if abs(roll) < 1:
+                    self.rabot.getPitchRoll()
+                    print("Pitch: " + str(self.rabot.pitch) + " Roll: " + str(self.rabot.roll))
+                    if abs(self.rabot.pitch) < 1:
                         zustand = Zustand.RabotAligned
                         print("Rabot ist ausgerichtet")
 

@@ -49,12 +49,6 @@ class RabotAPI:
     def getDistSensorValues(self):
         self.bus = smbus.SMBus(self.I2C_BUS)  # I2C-Bus öffnen
         i = 0
-        self.sensorwerte[i]= self.mpuSensor.get_accel_data()
-        i = 1
-        self.sensorwerte[i]= self.mpuSensor.get_gyro_data()
-        i = 2
-        self.sensorwerte[i]= self.mpuSensor.get_temp()
-        i = 3
         muxChanel = 0
 
         for tof in self.tofs:
@@ -63,21 +57,6 @@ class RabotAPI:
             i += 1
             muxChanel += 1
 
-    def drive(self, speed: int):
-        # Speed range: 100 bis -100. - -> drive backword
-
-        # --- Simulation
-        if speed > 0:
-            for pin in self.rangeForward:
-                self.gpio.setValue(pin, True)
-        if speed < 0:
-            for pin in self.rangeBackward:
-                self.gpio.setValue(pin, True)
-
-    def stop(self):
-        for pin in self.rangeForward + self.rangeBackward:
-            self.gpio.setValue(pin, False)
-    
     def getPitchRoll(self):
         dt = 0.02  # Abtastzeit (20 ms → 50 Hz)
         alpha = 0.98  # Filterkonstante
@@ -106,7 +85,26 @@ class RabotAPI:
         roll = alpha * roll_gyro + (1 - alpha) * roll_acc
         pitch = alpha * pitch_gyro + (1 - alpha) * pitch_acc
 
-        return roll, pitch
+        self.roll = roll
+        self.pitch = pitch
+
+
+    def drive(self, speed: int):
+        # Speed range: 100 bis -100. - -> drive backword
+
+        # --- Simulation
+        if speed > 0:
+            for pin in self.rangeForward:
+                self.gpio.setValue(pin, True)
+        if speed < 0:
+            for pin in self.rangeBackward:
+                self.gpio.setValue(pin, True)
+
+    def stop(self):
+        for pin in self.rangeForward + self.rangeBackward:
+            self.gpio.setValue(pin, False)
+    
+
 
 
 
