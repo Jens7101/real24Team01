@@ -41,6 +41,9 @@ git config --list
 ```
 python -m venv venv
 ```
+fals fehler: Python was not found; run without arguments to install from the Microsoft Store, or disable this shortcut from Settings > Apps > Advanced app settings > App execution aliases.
+- -> Debugging -> Python nicht gefunden
+
 ```
 venv/Scripts/activate
 ```
@@ -148,3 +151,13 @@ C:\msys64\mingw64\bin
 where cairo.dll
 ```
 - Wenn Datei gefunden -> Io
+
+### Python nicht gefunden
+---
+<img width="475" height="618" alt="image" src="https://github.com/user-attachments/assets/90643d03-0ae8-48f9-a1bf-b69e881bd890" />
+<img width="615" height="709" alt="image" src="https://github.com/user-attachments/assets/828cae35-843b-4899-8ac1-60163f67bf0e" />
+<img width="883" height="969" alt="image" src="https://github.com/user-attachments/assets/aa92ddab-3d26-4f45-8d8a-fba4ea585bf0" />
+<img width="754" height="828" alt="image" src="https://github.com/user-attachments/assets/79333010-e0d7-4d81-a71c-47cbc49c44d0" />
+
+
+
