@@ -32,7 +32,7 @@ class Rabot:
             match zustand:
 		        
                 case Zustand.RabotDrive:
-                    time.sleep(4)
+                    time.sleep(1)
                     self.rabot.getDistSensorValues()
                     panelSensors = self.rabot.sensorwerte[0:4]
                     for sensor in panelSensors:
@@ -72,7 +72,35 @@ class Rabot:
                     ProgrammStatus = False
 
                 case _:
-                    print ("Ungültiger Zustand: " + str(zustand)) 
+                    print ("Ungültiger Zustand: " + str(zustand))
+
+    def rotate180(self, speed, direction):
+        Zustand = Enum ('Zustand', ['Turn_180', 'Turned_180'])
+        zustand = Zustand.Turn_180
+        ProgrammStatus = True
+        self.rabot.calibrate_gyro()
+
+        print("Rabot Rotates 180 degrees to the " + direction)
+
+        while ProgrammStatus:
+            time.sleep(1 / 1000) # Frequenz in der die Zustände abgefragt werden
+            match zustand:
+                case Zustand.Turn_180:
+                    self.rabot.turn_180(speed, direction)
+                    self.rabot.get_absolute_yaw()
+                    if self.rabot._yaw >= 178 and self.rabot._yaw <= 182:
+                        zustand = Zustand.Turned_180
+                        print("Rabot has turned 180 degrees to the " + direction)
+                    print(self.rabot._yaw)
+
+                case Zustand.Turned_180:
+                    ProgrammStatus = False
+
+                case _:
+                    print ("Ungültiger Zustand: " + str(zustand))
+        
+        self.rabot.stop()
+        print("Rabot rotated 180 degrees to the " + direction)
 
 
 
@@ -80,5 +108,6 @@ class Rabot:
 if __name__ == '__main__':
     rabot = Rabot()
     # rabot.test()
-    # rabot.drivestraight(50)
-    rabot.alignApwards()
+    # rabot.drivestraight(-50)
+    # rabot.alignApwards()
+    rabot.rotate180(50, "right")
