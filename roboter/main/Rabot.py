@@ -69,6 +69,7 @@ class Rabot:
                         print("Rabot ist ausgerichtet")
 
                 case Zustand.RabotAligned:
+                    self.rabot.stop()
                     ProgrammStatus = False
 
                 case _:
@@ -91,17 +92,17 @@ class Rabot:
                 case Zustand.Turn:
                     self.rabot.turn_Degree(speed, direction, target)
                     print(self.rabot._yaw)
+                    print("Target:", target)
                     if self.rabot.turn_degree_done:
                         zustand = Zustand.Turned
                         print("Rabot has rotated", str(degree),  "degrees to the " + direction)
 
                 case Zustand.Turned:
+                    self.rabot.stop()
                     ProgrammStatus = False
 
                 case _:
                     print ("Ungültiger Zustand: " + str(zustand))
-        
-        self.rabot.stop()
 
 
 

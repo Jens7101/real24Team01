@@ -198,21 +198,36 @@ class RabotAPI:
             for pin in self.rangeBackward:
                 self.gpio.setValue(pin, True)
 
+
     def turn_left(self, speed):
-        if speed > 0:
-            print("value vor speed ist not in the allowed range")
-        else:
-            self.gpio.setValue(self.rangeForward[1], True)
-            self.gpio.setValue(self.rangeBackward[0], True)
+        # accept only non-negative speed
+        if speed < 0:
+            print("value for speed is not in the allowed range")
+            return
+
+        # optional: sicherheitshalber alle Motor-Pins aus
+        for pin in self.rangeForward + self.rangeBackward:
+            self.gpio.setValue(pin, False)
+
+        # Linksdrehung: rechter Motor vorwärts, linker Motor rückwärts
+        self.gpio.setValue(self.rangeForward[1], True)
+        self.gpio.setValue(self.rangeBackward[0], True)
 
     def turn_right(self, speed):
+        # accept only non-negative speed
         if speed < 0:
-            print("value vor speed ist not in the allowed range")
-        else:
-            self.gpio.setValue(self.rangeForward[0], True)
-            self.gpio.setValue(self.rangeBackward[1], True)
+            print("value for speed is not in the allowed range")
+            return
 
-    def turn_Degree(self, speed, direction, target):
+        # sicherheitshalber alle Motor-Pins aus
+        for pin in self.rangeForward + self.rangeBackward:
+            self.gpio.setValue(pin, False)
+
+        # Rechtsdrehung: rechter Motor rückwärts, linker Motor vorwärts
+        self.gpio.setValue(self.rangeBackward[1], True)
+        self.gpio.setValue(self.rangeForward[0], True)
+
+    def turn_Degree(self, speed, direction , target):
         self.turn_degree_done = False
 
         if speed < 0:
@@ -232,7 +247,7 @@ class RabotAPI:
                 self.turn_degree_done = True
 
     def calculate_target_angle(self, direction: str, degree: float) -> float:
-        yaw_start = self.get_absolute_yaw()
+        yaw_start = float(self.get_absolute_yaw())
 
         if direction == "right":
             target = yaw_start - degree
@@ -240,7 +255,10 @@ class RabotAPI:
             target = yaw_start + degree
     
         # Normalize to 0-360 range (handles both positive and negative)
-        target = target % 360 if target >= 0 else (360 + (target % 360))
+        if target > 0:
+            target = target % 360
+        else:
+            target = 360 + (target % 360)
         
         return target
         
