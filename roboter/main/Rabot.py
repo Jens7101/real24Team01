@@ -74,33 +74,34 @@ class Rabot:
                 case _:
                     print ("Ungültiger Zustand: " + str(zustand))
 
-    def rotate180(self, speed, direction):
-        Zustand = Enum ('Zustand', ['Turn_180', 'Turned_180'])
-        zustand = Zustand.Turn_180
-        ProgrammStatus = True
-        self.rabot.calibrate_gyro()
+    def rotate(self, speed, direction, degree):
+        Zustand = Enum ('Zustand', ['Turn', 'Turned'])
+        
+        target = self.rabot.calculate_target_angle(direction, degree)
+        self.rabot.turn_Degree(speed, direction, target)
 
-        print("Rabot Rotates 180 degrees to the " + direction)
+        zustand = Zustand.Turn
+        ProgrammStatus = True
+        
+        print("Rabot Rotates", str(degree),  "degrees to the " + direction)
 
         while ProgrammStatus:
             time.sleep(1 / 1000) # Frequenz in der die Zustände abgefragt werden
             match zustand:
-                case Zustand.Turn_180:
-                    self.rabot.turn_180(speed, direction)
-                    self.rabot.get_absolute_yaw()
-                    if self.rabot._yaw >= 178 and self.rabot._yaw <= 182:
-                        zustand = Zustand.Turned_180
-                        print("Rabot has turned 180 degrees to the " + direction)
+                case Zustand.Turn:
+                    self.rabot.turn_Degree(speed, direction, target)
                     print(self.rabot._yaw)
+                    if self.rabot.turn_degree_done:
+                        zustand = Zustand.Turned
+                        print("Rabot has rotated", str(degree),  "degrees to the " + direction)
 
-                case Zustand.Turned_180:
+                case Zustand.Turned:
                     ProgrammStatus = False
 
                 case _:
                     print ("Ungültiger Zustand: " + str(zustand))
         
         self.rabot.stop()
-        print("Rabot rotated 180 degrees to the " + direction)
 
 
 
@@ -110,4 +111,4 @@ if __name__ == '__main__':
     # rabot.test()
     # rabot.drivestraight(-50)
     # rabot.alignApwards()
-    rabot.rotate180(50, "right")
+    rabot.rotate(50, "right", 90)

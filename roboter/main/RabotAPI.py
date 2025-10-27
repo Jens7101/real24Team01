@@ -55,7 +55,8 @@ class RabotAPI:
         # Pitch/Roll in degrees (used elsewhere in your code)
         self.pitch = 0.0
         self.roll = 0.0
-        # ...existing code...
+        # Kalibriere das Gyroskop beim Start
+        self.calibrate_gyro()
 
         
     def getDistSensorValues(self):
@@ -116,7 +117,11 @@ class RabotAPI:
         self.gyro_bias['y'] = sy / samples
         self.gyro_bias['z'] = sz / samples
 
-    '''
+    ''' 
+    zweite varsion der getPitchRoll funktion ohne komplementärfilter
+    löschen wenn rest funtioniert
+    --------------
+
     def getPitchRoll(self):
         """
         Reads accelerometer and computes pitch and roll (in degrees).
@@ -207,16 +212,37 @@ class RabotAPI:
             self.gpio.setValue(self.rangeForward[0], True)
             self.gpio.setValue(self.rangeBackward[1], True)
 
-    def turn_180(self, speed, direction):
+    def turn_Degree(self, speed, direction, target):
+        self.turn_degree_done = False
+
         if speed < 0:
-            print("value vor speed ist not in the allowed range")
+            print("value vor speed is not in the allowed range")
         else:
+            
             if direction == "left":
                 self.turn_left(speed)
+            
             elif direction == "right":
                 self.turn_right(speed)
+
             else:
                 print("direction must be 'left' or 'right'")
+
+            if target -1 < self.get_absolute_yaw() < target +1:
+                self.turn_degree_done = True
+
+    def calculate_target_angle(self, direction: str, degree: float) -> float:
+        yaw_start = self.get_absolute_yaw()
+
+        if direction == "right":
+            target = yaw_start - degree
+        else:  # left
+            target = yaw_start + degree
+    
+        # Normalize to 0-360 range (handles both positive and negative)
+        target = target % 360 if target >= 0 else (360 + (target % 360))
+        
+        return target
         
     def stop(self):
         for pin in self.rangeForward + self.rangeBackward:
