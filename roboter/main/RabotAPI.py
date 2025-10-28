@@ -246,6 +246,20 @@ class RabotAPI:
             if target -1 < self.get_absolute_yaw() < target +1:
                 self.turn_degree_done = True
 
+    def turn(self, left_speed: int, right_speed: int):
+        # Speed range: 100 bis -100. - -> drive backword
+
+        # --- Simulation
+        self.stop()  # sicherheitshalber alle Motor-Pins aus
+        if left_speed > 0:
+            self.gpio.setValue(self.rangeForward[0], True)
+        if left_speed < 0:
+            self.gpio.setValue(self.rangeBackward[0], True)
+        if right_speed > 0:
+            self.gpio.setValue(self.rangeForward[1], True)
+        if right_speed < 0:
+            self.gpio.setValue(self.rangeBackward[1], True)
+
     def calculate_target_angle(self, direction: str, degree: float) -> float:
         yaw_start = float(self.get_absolute_yaw())
 
