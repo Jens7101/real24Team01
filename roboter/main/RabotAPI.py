@@ -264,17 +264,17 @@ class RabotAPI:
         yaw_start = float(self.get_absolute_yaw())
 
         if direction == "right":
-            target = yaw_start - degree
+            self.targetAngle = yaw_start - degree
         else:  # left
-            target = yaw_start + degree
+            self.targetAngle = yaw_start + degree
     
         # Normalize to 0-360 range (handles both positive and negative)
-        if target > 0:
-            target = target % 360
+        if self.targetAngle > 0:
+            self.targetAngle = self.targetAngle % 360
         else:
-            target = 360 + (target % 360)
+            self.targetAngle = 360 - (self.targetAngle % 360)
         
-        return target
+        return self
         
     def stop(self):
         for pin in self.rangeForward + self.rangeBackward:
