@@ -11,6 +11,8 @@ class Rabot:
 
         '''Stellvertreter Objekt des Roboters erstellen'''
         self.rabot = RabotAPI()
+        # Parameter setzen
+        self.DistanzSolarpanel = 150
 
     
     def test (self):
@@ -38,7 +40,7 @@ class Rabot:
                     for sensor in panelSensors:
                         print(sensor)
                     for sensor in panelSensors:
-                        if sensor < 40:
+                        if sensor > self.DistanzSolarpanel:
                             zustand = Zustand.RabotStop
                             print('Rabot Stop')
 
@@ -93,7 +95,7 @@ class Rabot:
                     self.rabot.turn_Degree(speed, direction, target)
                     print(self.rabot._yaw)
                     print("Target:", target)
-                    if self.rabot.turn_degree_done:
+                    if target -1 < self.rabot.get_absolute_yaw() < target +1:
                         zustand = Zustand.Turned
                         print("Rabot has rotated", str(degree),  "degrees to the " + direction)
 
@@ -136,31 +138,33 @@ class Rabot:
                 case Zustand.RobiFährVorwärts1:
                     time.sleep(1)
                     self.rabot.getDistSensorValues()
-                    frontSensors = self.rabot.sensorwerte[0:1]
+                    print (self.rabot.sensorwerte)
+                    frontSensors = self.rabot.sensorwerte[0:2]
+                    print("Front Sensors: " + str(frontSensors))
 
-                    if frontSensors[0] < 30:
+                    if frontSensors[0] > self.DistanzSolarpanel:
                         self.rabot.stop()
                         zustand = Zustand.RobiAusrichten
                         self.rabot.turn(0, 30)
-                    elif frontSensors[1] < 30:
+                        print("Rabor richtet sich aus") 
+                    elif frontSensors[1] > self.DistanzSolarpanel:
                         self.rabot.stop()
                         zustand = Zustand.RobiAusrichten
                         self.rabot.turn(30, 0)
-
-                    print("Rabor richtet sich aus")  
+                        print("Rabor richtet sich aus")  
 
                 case Zustand.RobiAusrichten:
                     self.rabot.getDistSensorValues()
                     frontSensors = self.rabot.sensorwerte[0:2]
-                    if frontSensors[0] >= 30 and frontSensors[1] >= 30:
+                    if frontSensors[0] > self.DistanzSolarpanel and frontSensors[1] > self.DistanzSolarpanel:
                         zustand = Zustand.RobiVierteldrehungLinks1
                         self.rabot.stop()
                         target = self.rabot.calculate_target_angle("left", 90)
-                        self.rabot.turn_Degree(30, "left", target)
+                        self.rabot.turn_left(30)
                         print("Rabot macht eine Vierteldrehung nach links")
 
                 case Zustand.RobiVierteldrehungLinks1:
-                    if self.rabot.turn_degree_done:
+                    if target -1 < self.rabot.get_absolute_yaw() < target +1:
                         zustand = Zustand.RobiFährtVorwärts2
                         self.rabot.drive(50)
                         Vorwärts = 1
@@ -169,17 +173,8 @@ class Rabot:
                 case Zustand.RobiFährtVorwärts2:
                     self.rabot.getDistSensorValues()
                     frontSensors = self.rabot.sensorwerte[0:2]
-                    if frontSensors[0] < 30 or frontSensors[1] < 30:
+                    if frontSensors[0] > self.DistanzSolarpanel or frontSensors[1] > self.DistanzSolarpanel:
                         self.rabot.stop()
-
-                        if Vorwärts == 1:
-                            zustand = Zustand.RobiDreht180
-                            # Parameter für 180 Grad Drehung
-                            Vorwärts = 2
-                            # Rabot dreht sich um 180 Grad
-                            target = self.rabot.calculate_target_angle("left", 180)
-                            self.rabot.turn_Degree(30, "left", target)
-                            print("Rabot dreht sich um 180 Grad")
 
                         if Vorwärts == 2:
                             zustand = Zustand.ViertelDrehungRechts_Zy
@@ -192,14 +187,23 @@ class Rabot:
                             self.rabot.turn_Degree(30, "right", target)
                             print("Rabot macht eine Vierteldrehung nach rechts")
 
+                        if Vorwärts == 1:
+                            zustand = Zustand.RobiDreht180
+                            # Parameter für 180 Grad Drehung
+                            Vorwärts = 2
+                            # Rabot dreht sich um 180 Grad
+                            target = self.rabot.calculate_target_angle("left", 180)
+                            self.rabot.turn_Degree(30, "left", target)
+                            print("Rabot dreht sich um 180 Grad")
+
                 case Zustand.RobiDreht180:
-                    if self.rabot.turn_degree_done:
+                    if target -1 < self.rabot.get_absolute_yaw() < target +1:
                         zustand = Zustand.RobiFährtVorwärts2
                         print("Rabot hat sich um 180 Grad gedreht")
                     pass
 
                 case Zustand.ViertelDrehungRechts_Zy:
-                    if self.rabot.turn_degree_done:
+                    if target -1 < self.rabot.get_absolute_yaw() < target +1:
                         
                         if Drehen == 1:
                             zustand = Zustand.RobiFährtRunter_Zy
@@ -222,14 +226,14 @@ class Rabot:
                     time.sleep(2)
                     self.rabot.getDistSensorValues()
                     frontSensors = self.rabot.sensorwerte[0:2]
-                    if frontSensors[0] < 30 or frontSensors[1] < 30:
+                    if frontSensors[0] > self.DistanzSolarpanel or frontSensors[1] > self.DistanzSolarpanel:
                         if rechtsLinks == "left":
                             self.rabot.stop()
                             zustand = Zustand.ViertelDrehungLinks_Zy
                             # Parameter für Zyklus
                             lastRow = True
                             target = self.rabot.calculate_target_angle("left", 90)
-                            self.rabot.turn_Degree(30, "left", target)
+                            self.rabot.turn_left(30)
                             print("Rabot macht eine Vierteldrehung nach links")
                         elif rechtsLinks == "right":
                             self.rabot.stop()
@@ -237,25 +241,25 @@ class Rabot:
                             # Parameter für Zyklus
                             lastRow = True
                             target = self.rabot.calculate_target_angle("right", 90)
-                            self.rabot.turn_Degree(30, "right", target)
+                            self.rabot.turn_right(30)
                             print("Rabot macht eine Vierteldrehung nach rechts")
 
                     elif rechtsLinks == "left":
                         zustand = Zustand.ViertelDrehungLinks_Zy
                         Drehen = 2
                         target = self.rabot.calculate_target_angle("left", 90)
-                        self.rabot.turn_Degree(30, "left", target)
+                        self.rabot.turn_left(30)
                         print("Rabot macht eine Vierteldrehung nach links")
 
                     elif rechtsLinks == "right":
                         zustand = Zustand.ViertelDrehungRechts_Zy
                         Drehen = 2
                         target = self.rabot.calculate_target_angle("right", 90)
-                        self.rabot.turn_Degree(30, "right", target)
+                        self.rabot.turn_right(30)
                         print("Rabot macht eine Vierteldrehung nach rechts")    
 
                 case Zustand.ViertelDrehungLinks_Zy:
-                    if self.rabot.turn_degree_done:
+                    if target -1 < self.rabot.get_absolute_yaw() < target +1:
                         
                         if Drehen == 1:
                             zustand = Zustand.RobiFährtRunter_Zy
@@ -276,7 +280,7 @@ class Rabot:
                 case Zustand.RobiFährtVorwärts_Zy:
                     rabot.getDistSensorValues()
                     frontSensors = self.rabot.sensorwerte[0:2]
-                    if frontSensors[0] < 30 or frontSensors[1] < 30:
+                    if frontSensors[0] > self.DistanzSolarpanel or frontSensors[1] > self.DistanzSolarpanel:
                         self.rabot.stop()
 
                         if rechtsLinks == "left":
@@ -285,7 +289,7 @@ class Rabot:
                             Drehen = 1
                             # Rabot macht eine Vierteldrehung nach links
                             target = self.rabot.calculate_target_angle("left", 90)
-                            self.rabot.turn_Degree(30, "left", target)
+                            self.rabot.turn_left(30)
                             print("Rabot macht eine Vierteldrehung nach links")
                         elif rechtsLinks == "right":
                             zustand = Zustand.ViertelDrehungRechts_Zy
@@ -293,13 +297,13 @@ class Rabot:
                             Drehen = 1
                             # Rabot macht eine Vierteldrehung nach rechts
                             target = self.rabot.calculate_target_angle("right", 90)
-                            self.rabot.turn_Degree(30, "right", target)
+                            self.rabot.turn_right(30)
                             print("Rabot macht eine Vierteldrehung nach rechts")
 
                 case Zustand.RobiFährtVorwärtsLetzteReihe:
                     rabot.getDistSensorValues()
                     frontSensors = self.rabot.sensorwerte[0:2]
-                    if frontSensors[0] < 30 or frontSensors[1] < 30:
+                    if frontSensors[0] > self.DistanzSolarpanel or frontSensors[1] > self.DistanzSolarpanel:
                         zustand = Zustand.RobiStoppt
                         print("Rabot stoppt")
 
@@ -315,6 +319,7 @@ class Rabot:
 if __name__ == '__main__':
     rabot = Rabot()
     # rabot.test()
-    # rabot.drivestraight(-50)
-    rabot.alignApwards()
+    # rabot.drivestraight(50)
+    # rabot.alignApwards()
     # rabot.rotate(50, "right", 90)
+    rabot.first_demo_programm()
