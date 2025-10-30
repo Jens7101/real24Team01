@@ -58,6 +58,23 @@ class RabotAPI:
         # Kalibriere das Gyroskop beim Start
         self.calibrate_gyro()
 
+        ## ------------ Motor Control ------------
+        # Crawler-IPs
+        self.mot_IP_left = "192.168.7.10"
+        self.mot_IP_right = "192.168.7.11"
+        self.crawler_ips = [self.mot_IP_left, self.mot_IP_right]
+
+        # Init Crawler Acceleration
+        self.crawler_acc_dcc()
+
+        # Brushes-IPs
+        self.brush_IP_front = "192.168.7.12"
+        self.brush_IP_bake = "192.168.7.13"
+        self.brushes_ips = [self.brush_IP_front] # hinter Bürste noch nicht vorhanden
+
+        # Init Brushes Acceleration                 #Controller Bürsten noch nicht angeschlossen
+        #self.crawler_acc_dcc()
+
         
     def getDistSensorValues(self):
         self.bus = smbus.SMBus(self.I2C_BUS)  # I2C-Bus öffnen
@@ -281,7 +298,175 @@ class RabotAPI:
             self.gpio.setValue(pin, False)
     
 
+    ## ------------  Motor Control General  ------------
+    # Send Command 
+    def send_rest_command(self, ip, index, subindex, hex_value):
+        path = f"/od/{index:04X}/{subindex:02X}"
+        body = f'"{hex_value}"'
+        headers = (
+            f"POST {path} HTTP/1.1\r\n"
+            f"Host: {ip}\r\n"
+            "Content-Type: application/x-www-form-urlencoded\r\n"
+            f"Content-Length: {len(body)}\r\n"
+            "Connection: close\r\n"
+            "\r\n"
+            f"{body}"
+        )
+        try:
+            with socket.create_connection((ip, 80), timeout=2) as sock:
+                sock.sendall(headers.encode())
+                sock.recv(4096)
+        except Exception as e:
+            print(f"{ip} → Fehler: {e}")
 
+    # Read Command 
+    def read_signed_rpm(self, ip, index, subindex):
+        path = f"/od/{index:04X}/{subindex:02X}"
+        headers = (
+            f"GET {path} HTTP/1.1\r\n"
+            f"Host: {ip}\r\n"
+            "Accept: application/json\r\n"
+            "Connection: close\r\n"
+            "\r\n"
+        )
+        try:
+            with socket.create_connection((ip, 80), timeout=2) as sock:
+                sock.sendall(headers.encode())
+                response = sock.recv(4096).decode()
+                if '"' in response:
+                    hex_value = response.split('"')[1]
+                    value = int(hex_value, 16)
+                    if value > 0x7FFFFFFF:
+                        value -= 0x100000000
+                    return value  
+        except Exception as e:
+            print(f"{ip} → Fehler beim Lesen: {e}")
+        return None
+    
+    # Decimal to Hex
+    def dec_to_hex_8(self, value):
+        return f"{value & 0xFFFFFFFF:08X}"
+    
+
+    ## ------------  Crawler Control  ------------
+
+    # Acceleration and Deceleration Crawler
+    def crawler_acc_dcc(self, acc = 5000, dcc = 5000):
+        for ip in self.crawler_ips:
+            self.send_rest_command(ip, 0x6083, 0x00, self.dec_to_hex_8(max(100, min(8000, acc))))  # Acceleration 100 << acc << 8000
+            self.send_rest_command(ip, 0x6084, 0x00, self.dec_to_hex_8(max(100, min(8000, dcc))))  # Deceleration 100 << acc << 8000
+    
+    # Enable Crawler Motors
+    def enable_crawler(self):
+        for ip in self.crawler_ips:
+            self.send_rest_command(ip, 0x6060, 0x00, "03")               # Profile Velocity Mode
+            self.send_rest_command(ip, 0x6040, 0x00, "0006")             # Voltage Enabled
+            self.send_rest_command(ip, 0x6040, 0x00, "0007")             # Switched On
+            self.send_rest_command(ip, 0x6040, 0x00, "000F")             # Operation Enabled
+            time.sleep(0.2)
+            self.drive_straight(0)
+
+    # Drive Straight
+    def drive_straight(self, speed):
+        self.send_rest_command(self.mot_IP_left, 0x60FF, 0x00, self.dec_to_hex_8(speed))
+        self.send_rest_command(self.mot_IP_right, 0x60FF, 0x00, self.dec_to_hex_8(speed))
+
+    # Rotate Crawler
+    def rotate_crawler(self,speed, direktion):
+        if direktion == "left":
+            self.send_rest_command(self.mot_IP_left, 0x60FF, 0x00, self.dec_to_hex_8(-speed))
+            self.send_rest_command(self.mot_IP_right, 0x60FF, 0x00, self.dec_to_hex_8(speed))
+        elif direktion == "right":
+            self.send_rest_command(self.mot_IP_left, 0x60FF, 0x00, self.dec_to_hex_8(speed))
+            self.send_rest_command(self.mot_IP_right, 0x60FF, 0x00, self.dec_to_hex_8(-speed))
+        else:
+            print("wrong direction")
+
+    # Turn Crawler 0 beide gleich, 
+    def turn_crawler(self, speed, balance):
+        if balance <= 0:    # nach links
+            left_speed = speed
+            right_speed = max(150, speed - ((speed / 100) * abs(max(-100, balance))))
+            print(f"Geschwindigkeit: Left = {left_speed}, Right = {right_speed}")
+        elif balance > 0:   # nach rechts
+            left_speed = max(150, speed - ((speed / 100) * abs(min(100, balance))))
+            right_speed = speed
+            print(f"Geschwindigkeit: Left = {left_speed}, Right = {right_speed}")
+
+        self.send_rest_command(self.mot_IP_left, 0x60FF, 0x00, self.dec_to_hex_8(int(left_speed)))
+        self.send_rest_command(self.mot_IP_right, 0x60FF, 0x00, self.dec_to_hex_8(int(right_speed)))
+
+    #Read Actual RPM
+    def read_rpm(self):
+        for ip in self.crawler_ips:
+                Umdr = self.read_signed_rpm(ip, 0x606C, 0x00)  # ActualVelocity
+                if Umdr is not None:
+                    print(f"{ip} → aktuelle Drehzahl: {Umdr} RPM")
+                    return Umdr
+                else:
+                    print(f"{ip} → keine Drehzahl gelesen")
+        time.sleep(0.2)
+
+
+    # Stop Crawler
+    def stop_crawler(self):
+        self.drive_straight(0)
+
+    # Enable Crawler Brake
+    def brake_crawler(self):
+        for ip in self.crawler_ips:
+            self.send_rest_command(ip, 0x6040, 0x00, "0002")  # Quick Stop
+
+    # Release Crawler Brake
+    def release_brake_crawler(self):
+        for ip in self.crawler_ips:
+            self.send_rest_command(ip, 0x6040, 0x00, "0006")  # Enable Voltage
+            self.send_rest_command(ip, 0x6040, 0x00, "0007")  # Switched On
+            self.send_rest_command(ip, 0x6040, 0x00, "000F")  # Operation Enabled
+
+        #evtl speed auf 0 ???
+        time.sleep(0.1)
+
+    # Disable Crawler
+    def disable_crawler(self):
+        self.stop_crawler()
+        for ip in self.crawler_ips:
+            self.send_rest_command(ip, 0x6040, 0x00, "0006")  # Stop
+
+
+    
+
+    ## ------------  Brushes Control  ------------
+    # Acceleration and Deceleration Brushes
+    def brushes_acc_dcc(self, acc = 5000, dcc = 5000):
+        for ip in self.brushes_ips:
+            self.send_rest_command(ip, 0x6083, 0x00, self.dec_to_hex_8(max(100, min(8000, acc))))  # Acceleration 100 << acc << 8000
+            self.send_rest_command(ip, 0x6084, 0x00, self.dec_to_hex_8(max(100, min(8000, dcc))))  # Deceleration 100 << acc << 8000
+    
+    # Enable Brush Motors
+    def enable_brushes(self):
+        for ip in self.brushes_ips:
+            self.send_rest_command(ip, 0x6060, 0x00, "03")               # Profile Velocity Mode
+            self.send_rest_command(ip, 0x6040, 0x00, "0006")             # Voltage Enabled
+            self.send_rest_command(ip, 0x6040, 0x00, "0007")             # Switched On
+            self.send_rest_command(ip, 0x6040, 0x00, "000F")             # Operation Enabled
+            time.sleep(0.2)
+            self.rotate_brushes(0)
+
+    # Rotate Brushes
+    def rotate_brushes(self, speed):
+        for ip in self.brushes_ips:
+            self.send_rest_command(ip, 0x60FF, 0x00, self.dec_to_hex_8(speed))
+
+    # Stop Brushes
+    def stop_brushes(self):
+        self.rotate_brushes(0)
+
+    # Diable Brush Motors
+    def disable_brushes(self):
+        self.stop_brushes()
+        for ip in self.brushes_ips:
+            self.send_rest_command(ip, 0x6040, 0x00, "0006")  # Stop
 
 
 
