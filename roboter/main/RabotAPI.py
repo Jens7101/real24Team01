@@ -8,7 +8,7 @@ import smbus
 import flink
 import time
 import math
-
+import socket
 
 class RabotAPI:
     
@@ -57,6 +57,28 @@ class RabotAPI:
         self.roll = 0.0
         # Kalibriere das Gyroskop beim Start
         self.calibrate_gyro()
+
+
+        #-----------IP-Adressen------------
+        self.left_crawler = "192.168.7.10"
+        self.right_crawler = "192.168.7.11"
+        self.crawler_ips = [self.left_crawler, self.right_crawler]
+        
+        self.front_brush = "192.168.7.12"
+        self.rear_brush = "192.168.7.13"
+        self.brushes_ips = [self.front_brush]           #Nur front brush
+
+        #-----------Crawler-Parameter------------
+        self.crawler_rpm = 750
+        self.crawler_acc = 5000
+        self.crawler_dec = 5000
+        self.brake_active = False
+
+        #-----------Brush-Parameter------------
+        self.brush_rpm = 1000
+        self.brush_acc = 5000
+        self.brush_dec = 5000
+
 
         
     def getDistSensorValues(self):
@@ -279,6 +301,85 @@ class RabotAPI:
     def stop(self):
         for pin in self.rangeForward + self.rangeBackward:
             self.gpio.setValue(pin, False)
+
+    # Funktionen für REST-Kommunikation mit Motoren
+    def send_rest_command(self, ip, index, subindex, hex_value):
+        path = f"/od/{index:04X}/{subindex:02X}"
+        body = f'"{hex_value}"'
+        headers = (
+            f"POST {path} HTTP/1.1\r\n"
+            f"Host: {ip}\r\n"
+            "Content-Type: application/x-www-form-urlencoded\r\n"
+            f"Content-Length: {len(body)}\r\n"
+            "Connection: close\r\n"
+            "\r\n"
+            f"{body}"
+        )
+        try:
+            with socket.create_connection((ip, 80), timeout=2) as sock:
+                sock.sendall(headers.encode())
+                sock.recv(4096)
+        except Exception as e:
+            print(f"{ip} → Fehler: {e}")
+
+    def read_signed_rpm(self, ip, index, subindex):
+        path = f"/od/{index:04X}/{subindex:02X}"
+        headers = (
+            f"GET {path} HTTP/1.1\r\n"
+            f"Host: {ip}\r\n"
+            "Accept: application/json\r\n"
+            "Connection: close\r\n"
+            "\r\n"
+        )
+        try:
+            with socket.create_connection((ip, 80), timeout=2) as sock:
+                sock.sendall(headers.encode())
+                response = sock.recv(4096).decode()
+                if '"' in response:
+                    hex_value = response.split('"')[1]
+                    value = int(hex_value, 16)
+                    if value > 0x7FFFFFFF:
+                        value -= 0x100000000
+                    return value
+        except Exception as e:
+            print(f"{ip} → Fehler beim Lesen: {e}")
+        return None
+    
+
+    def startup_crawlers(self):
+        self.update_crawler_acc_dcc(self.crawler_acc, self.crawler_dec)
+        for ip in self.crawler_ips:
+            self.send_rest_command(ip, 0x6060, 0x00, "03")
+            self.send_rest_command(ip, 0x6040, 0x00, "0006")
+            self.send_rest_command(ip, 0x6040, 0x00, "0007")
+            self.send_rest_command(ip, 0x6040, 0x00, "000F")
+            time.sleep(0.2)
+            
+    def close_crawlers(self):
+        for ip in self.crawler_ips:
+            self.send_rest_command(ip, 0x6040, 0x00, "0006")
+        for ip in self.brushes_ips:
+            self.send_rest_command(ip, 0x6040, 0x00, "0006")
+
+    def dec_to_hex_8(self, value):
+        return f"{value & 0xFFFFFFFF:08X}"
+    
+    def update_crawler_acc_dcc(self, acc, dcc):
+        for ip in self.crawler_ips:
+            self.send_rest_command(ip, 0x6083, 0x00, self.dec_to_hex_8(acc))
+            self.send_rest_command(ip, 0x6084, 0x00, self.dec_to_hex_8(dcc))
+
+    def set_crawler_rpm(self, left_rpm, right_rpm):
+        self.send_rest_command(self.left_crawler, 0x60FF, 0x00, self.dec_to_hex_8(left_rpm))
+        self.send_rest_command(self.right_crawler, 0x60FF, 0x00, self.dec_to_hex_8(right_rpm))
+
+    def stop_crawlers(self):
+        self.set_crawler_rpm(0, 0)
+
+    def set_brush_rpm(self, rpm_value):
+        for ip in self.brushes_ips:
+            self.send_rest_command(ip, 0x60FF, 0x00, self.dec_to_hex_8(rpm_value))
+
     
 
 

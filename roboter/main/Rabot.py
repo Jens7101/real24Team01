@@ -321,7 +321,13 @@ class Rabot:
 
                 case _:
                     print ("Ungültiger Zustand: " + str(zustand))
-
+    def Rabot_test(self):
+        self.rabot.update_crawler_acc_dcc(5000,5000)
+        self.rabot.startup_crawlers()
+        self.rabot.set_crawler_rpm(500,500)
+        time.sleep(2)
+        self.rabot.stop_crawlers()
+        self.rabot.close_crawlers()
 
 
 if __name__ == '__main__':
@@ -330,4 +336,5 @@ if __name__ == '__main__':
     # rabot.drivestraight(50)
     # rabot.alignApwards()
     # rabot.rotate(50, "right", 90)
-    rabot.first_demo_programm()
+    #rabot.first_demo_programm()
+    rabot.Rabot_test()
