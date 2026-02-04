@@ -138,17 +138,18 @@ def print_mode_hint():
 ╔════════════════════════════════════════════════════════════╗
 ║ MANUELLER MODUS                                            ║
 ╠════════════════════════════════════════════════════════════╣
-║ ↑ ↓ ← → → Fahren (Richtung)                                ║
-║ A / D → Raupen-RPM verringern / erhöhen                    ║
-║ Q / E → Raupen-ACC/DCC verringern / erhöhen                ║
-║ B → Bremse toggeln                                         ║
-║ G → Drehzahl anzeigen                                      ║
-║ J → Distanzmessung starten / stoppen                       ║
-║ K → Distanz zurücksetzen                                   ║
-║ L → Distanz anzeigen                                       ║
-║ O → Bürste starten / stoppen                               ║
-║ M → Modus wechseln                                         ║
-║ ESC → Programm beenden                                     ║
+║ ↑ ↓ ← →       Fahren (Richtung)                            ║
+║ A / D         Raupen-RPM verringern / erhöhen              ║
+║ Q / E         Raupen-ACC/DCC verringern / erhöhen          ║
+║ B             Bremse toggeln                               ║
+║ G             Drehzahl anzeigen                            ║
+║ J             Distanzmessung starten / stoppen             ║
+║ K             Distanz zurücksetzen                         ║
+║ L             Distanz anzeigen                             ║
+║ O             Bürste starten / stoppen                     ║
+║ Y / C         Bürsten-RPM verringern / erhöhen             ║
+║ M             Modus wechseln                               ║
+║ ESC           Programm beenden                             ║
 ╚════════════════════════════════════════════════════════════╝
 """)
     else:
@@ -156,9 +157,9 @@ def print_mode_hint():
 ╔════════════════════════════════════════════════════════════╗
 ║ AUTOMATISCHER MODUS                                        ║
 ╠════════════════════════════════════════════════════════════╣
-║ SPACE → Ablauf starten                                     ║
-║ M → Modus wechseln                                         ║
-║ ESC → Programm beenden                                     ║
+║ SPACE         Ablauf starten                               ║
+║ M             Modus wechseln                               ║
+║ ESC           Programm beenden                             ║
 ╚════════════════════════════════════════════════════════════╝
 """)
 
@@ -199,13 +200,13 @@ try:
                 for ip in brushes_ips:
                     send_rest_command(ip, 0x60FF, 0x00, dec_to_hex_8(0))
             time.sleep(0.2)
-        elif keyboard.is_pressed("y"):
+        elif keyboard.is_pressed("c"):
             brush_rpm = min(3000, brush_rpm + 100)
             print(f"Bürsten-RPM erhöht: {brush_rpm}")
             if brush_running:
                 set_brush_rpm(brush_rpm)
             time.sleep(0.2)
-        elif keyboard.is_pressed("c"):
+        elif keyboard.is_pressed("y"):
             brush_rpm = max(150, brush_rpm - 100)
             print(f"Bürsten-RPM verringert: {brush_rpm}")
             if brush_running:
@@ -359,12 +360,45 @@ try:
                             set_crawler_rpm(0, 0)
 
                         for _ in range(loops):
+                            if keyboard.is_pressed("esc"):
+                                print("Beende Steuerung...")
+                                stop_crawlers()
+                                auto_sequence_running = False
+                                raise KeyboardInterrupt()
                             if keyboard.is_pressed("space"):
                                 print("Automatischer Ablauf manuell unterbrochen.")
                                 auto_sequence_running = False
                                 stop_crawlers()
                                 aborted = True
                                 break
+                            # Bürstensteuerung während des Ablaufs
+                            if keyboard.is_pressed("o"):
+                                brush_running = not brush_running
+                                if brush_running:
+                                    print("Bürste gestartet.")
+                                    for ip in brushes_ips:
+                                        send_rest_command(ip, 0x6060, 0x00, "03")
+                                        send_rest_command(ip, 0x6040, 0x00, "0006")
+                                        send_rest_command(ip, 0x6040, 0x00, "0007")
+                                        send_rest_command(ip, 0x6040, 0x00, "000F")
+                                    set_brush_rpm(brush_rpm)
+                                else:
+                                    print("Bürste gestoppt.")
+                                    for ip in brushes_ips:
+                                        send_rest_command(ip, 0x60FF, 0x00, dec_to_hex_8(0))
+                                time.sleep(0.2)
+                            elif keyboard.is_pressed("c"):
+                                brush_rpm = min(3000, brush_rpm + 100)
+                                print(f"Bürsten-RPM erhöht: {brush_rpm}")
+                                if brush_running:
+                                    set_brush_rpm(brush_rpm)
+                                time.sleep(0.2)
+                            elif keyboard.is_pressed("y"):
+                                brush_rpm = max(150, brush_rpm - 100)
+                                print(f"Bürsten-RPM verringert: {brush_rpm}")
+                                if brush_running:
+                                    set_brush_rpm(brush_rpm)
+                                time.sleep(0.2)
                             time.sleep(step_time)
 
                         if aborted:
@@ -374,71 +408,30 @@ try:
                         auto_sequence_cycles += 1
 
         # Drehzahl anzeigen
-        elif keyboard.is_pressed("g"):
+        if keyboard.is_pressed("g"):
             for ip in crawler_ips:
+                motor_name = "Linker Motor" if ip == left_crawler else "Rechter Motor"
                 rpm_val = read_signed_rpm(ip, 0x606C, 0x00)
                 if rpm_val is not None:
-                    print(f"{ip} → aktuelle Drehzahl: {rpm_val} RPM")
-                    if measuring:
-                        print(f"{ip} → Strecke: {distance[ip]:.3f} m")
+                    print(f"{motor_name} ({ip}) → aktuelle Drehzahl: {rpm_val} RPM")
                 else:
-                    print(f"{ip} → keine Drehzahl gelesen")
+                    print(f"{motor_name} ({ip}) → keine Drehzahl gelesen")
             time.sleep(0.2)
 
         # Streckenmessung
-        elif keyboard.is_pressed("j"):
+        if keyboard.is_pressed("j"):
             measuring = not measuring
             print(f"Streckenmessung {'gestartet' if measuring else 'gestoppt'}.")
             time.sleep(0.3)
-        elif keyboard.is_pressed("k"):
+        if keyboard.is_pressed("k"):
             distance = {left_crawler: 0.0, right_crawler: 0.0}
             print("Streckenmessung zurückgesetzt.")
             time.sleep(0.3)
-        elif keyboard.is_pressed("l"):
+        if keyboard.is_pressed("l"):
             for ip in crawler_ips:
-                print(f"{ip} → Strecke: {distance[ip]:.3f} m")
+                motor_name = "Linker Motor" if ip == left_crawler else "Rechter Motor"
+                print(f"{motor_name} ({ip}) → Strecke: {distance[ip]:.3f} m")
             time.sleep(0.3)
-
-        # Bürstensteuerung       
-        elif keyboard.is_pressed("o"):
-            brush_running = not brush_running
-            if brush_running:
-                print("Bürste gestartet.")
-                for ip in brushes_ips:
-                    send_rest_command(brushes_ips, 0x6060, 0x00, "03")
-                    send_rest_command(brushes_ips, 0x6040, 0x00, "0006")
-                    send_rest_command(brushes_ips, 0x6040, 0x00, "0007")
-                    send_rest_command(brushes_ips, 0x6040, 0x00, "000F")
-                set_brush_rpm(brush_rpm)
-            else:
-                print("Bürste gestoppt.")
-                set_brush_rpm(0)
-                for ip in brushes_ips:
-                    send_rest_command(brushes_ips, 0x60FF, 0x00, dec_to_hex_8(0))
-                    #send_rest_command(brushes_ips, 0x6040, 0x00, "0006")
-                    send_rest_command(brushes_ips, 0x6040, 0x00, "0002")
-            time.sleep(0.2)
-        elif keyboard.is_pressed("y"):
-            brush_rpm = min(3000, brush_rpm + 100)
-            print(f"Bürsten-RPM erhöht: {brush_rpm}")
-            if brush_running:
-                set_brush_rpm(brush_rpm)
-            time.sleep(0.2)
-        elif keyboard.is_pressed("c"):
-            brush_rpm = max(150, brush_rpm - 100)
-            print(f"Bürsten-RPM verringert: {brush_rpm}")
-            if brush_running:
-                set_brush_rpm(brush_rpm)
-            time.sleep(0.2)
-        
-        elif keyboard.is_pressed("p"):
-            for ip in brushes_ips:
-                send_rest_command(ip, 0x6040, 0x00, "0006")
-            
-            time.sleep(0.3)
-        elif keyboard.is_pressed("esc"):
-            print("Beende Steuerung...")
-            break
 
         time.sleep(0.05)
 

@@ -424,8 +424,8 @@ class Rabot:
                 case Zustand.RobiDreht180:
                     if self.rabot.targetAngle -1 < self.rabot.get_absolute_yaw() < self.rabot.targetAngle +1:
                         zustand = Zustand.RobiFährtVorwärts2
-                        self.rabot.start_brushes()
                         print("Rabot hat sich um 180 Grad gedreht")
+                        self.rabot.startup_brushes()
                     pass
 
                 case Zustand.ViertelDrehungRechts_Zy:

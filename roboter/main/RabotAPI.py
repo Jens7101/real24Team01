@@ -346,7 +346,7 @@ class RabotAPI:
         return None
     
     # Funktionen für Raupensteuerung
-    def startup_crawlers(self):
+    def startup_crawlers(self):     # Raupe Betriebsbereit machen
         self.update_crawler_acc_dcc(self.crawler_acc, self.crawler_dec)
         for ip in self.crawler_ips:
             self.send_rest_command(ip, 0x6060, 0x00, "03")
@@ -355,7 +355,7 @@ class RabotAPI:
             self.send_rest_command(ip, 0x6040, 0x00, "000F")
             time.sleep(0.2)
             
-    def close_crawlers(self):
+    def close_crawlers(self):       # Raupen abschalten
         self.crawler_stop()
         for ip in self.crawler_ips:
             self.send_rest_command(ip, 0x6040, 0x00, "0006")
@@ -363,7 +363,7 @@ class RabotAPI:
     def dec_to_hex_8(self, value):
         return f"{value & 0xFFFFFFFF:08X}"
     
-    def update_crawler_acc_dcc(self, acc, dcc):
+    def update_crawler_acc_dcc(self, acc, dcc): # Aktualisiert Beschleunigung und Verzögerung der Raupen
         for ip in self.crawler_ips:
             self.send_rest_command(ip, 0x6083, 0x00, self.dec_to_hex_8(acc))
             self.send_rest_command(ip, 0x6084, 0x00, self.dec_to_hex_8(dcc))
@@ -385,7 +385,7 @@ class RabotAPI:
 
 
     # Funktionen für Bürstensteuerung
-    def start_brushes(self, rpm = 1000):
+    def startup_brushes(self, rpm = 1000):     # Bürsten starten
         for ip in self.brushes_ips:
             self.send_rest_command(ip, 0x6060, 0x00, "03")
             self.send_rest_command(ip, 0x6040, 0x00, "0006")
@@ -393,24 +393,18 @@ class RabotAPI:
             self.send_rest_command(ip, 0x6040, 0x00, "000F")
         self.set_brush_rpm(rpm)
 
-    def close_brushes(self):
+    def close_brushes(self):                    # Bürsten stoppen
         self.stop_brushes()
         for ip in self.brushes_ips:
             self.send_rest_command(ip, 0x6040, 0x00, "0006")
 
-    def set_brush_rpm(self, rpm_value):
+    def set_brush_rpm(self, rpm_value):         # Drehzahl der Bürsten einstellen
         for ip in self.brushes_ips:
             self.send_rest_command(ip, 0x60FF, 0x00, self.dec_to_hex_8(rpm_value))
     
-    def stop_brushes(self):
+    def stop_brushes(self):                     # Bürsten stoppen
         for ip in self.brushes_ips:
             self.send_rest_command(ip, 0x60FF, 0x00, self.dec_to_hex_8(0))
             
 
     
-
-
-
-
-
-
