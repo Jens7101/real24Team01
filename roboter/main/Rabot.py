@@ -336,6 +336,7 @@ class Rabot:
         
         for i in range(10):
             self.rabot.getPitchRoll()
+            print("Pitch: " + str(self.rabot.pitch))
             time.sleep(0.1)
       
 
@@ -348,6 +349,7 @@ class Rabot:
             print("Rabot dreht rechts")
             print(self.rabot.pitch)
 
+        
 
         while ProgrammStatus:
             time.sleep(1 / 1000) # Frequenz in der die Zustände abgefragt werden
@@ -355,8 +357,9 @@ class Rabot:
                 case Zustand.RobiDrehtBisHorizontal:
                     self.rabot.getPitchRoll()
                     print("Pitch: " + str(self.rabot.pitch))
-                    if abs(self.rabot.pitch) < 1:
-                        zustand = Zustand.RobiFährVorwärts1
+                    if abs(self.rabot.pitch) < 0.2:
+                        zustand = Zustand.RobiStoppt
+                        # zustand = Zustand.RobiFährVorwärts1
                         self.rabot.crawler_drive(rpm)
                         print("Rabot fährt vorwärts")
 
