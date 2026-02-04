@@ -7,24 +7,7 @@ __author__ = "Moritz Lammerich"
 __license__ = "http://www.apache.org/licenses/LICENSE-2.0"
 __version__ = "1.0"
 
-# I2C-Adresse des PA.Hub (TCA9548A Multiplexer)
-PA_HUB_I2C_ADDRESS = 0x70
-
-def select_mux_channel(bus, channel):
-    """
-    Wählt den entsprechenden Kanal des PA.Hub Multiplexers aus.
-
-    Parameters:
-    -----------
-    bus: smbus.SMBus instance
-        Der I2C-Bus, an dem der Multiplexer angeschlossen ist.
-    channel: int
-        Der Multiplexer-Kanal (0-7), auf dem der gewünschte Sensor liegt.
-    """
-    bus.write_byte(PA_HUB_I2C_ADDRESS, 1 << channel)
-    time.sleep(0.01)  # Kleine Verzögerung nach Kanalwechsel
-
-def init_vl53l0xx(i2c_bus_number, mux_channels):
+def init_vl53l0xx(i2c_bus_number, Hubs):
     """
     Initialisiert mehrere VL53L0X-Sensoren über den PA.Hub Multiplexer.
 
@@ -40,19 +23,41 @@ def init_vl53l0xx(i2c_bus_number, mux_channels):
     List of initialized sensors.
     """
     address = 0x10  # Neue Startadresse für die Sensoren
-    sensors = []
+    Hubs_mit_Sensordaten = []
 
     bus = smbus.SMBus(i2c_bus_number)  # I2C-Bus öffnen
+    print(Hubs)
 
-    for channel in mux_channels:
-        select_mux_channel(bus, channel)  # Wähle den entsprechenden Kanal
+    for Hub in Hubs:
+        PA_HUB_I2C_ADDRESS = Hub[0]
+        sensors = []
+        PA_HUB_I2C_ADDRESS_mit_sensors = []
+        for channel in Hub[1]:
+            select_mux_channel(bus, channel, PA_HUB_I2C_ADDRESS)  # Wähle den entsprechenden Kanal
 
-        tof = VL53L0X.VL53L0X(0x29)  # Standardadresse des Sensors
-        tof.device_address = address  # Sensor auf neue Adresse setzen
+            tof = VL53L0X.VL53L0X(0x29)  # Standardadresse des Sensors
+            tof.device_address = address  # Sensor auf neue Adresse setzen
+            
+            address += 2  # Nächste Adresse für den nächsten Sensor
+
+            tof.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
+            sensors.append(tof)
+        PA_HUB_I2C_ADDRESS_mit_sensors.extend([PA_HUB_I2C_ADDRESS, sensors])
+        Hubs_mit_Sensordaten.append(PA_HUB_I2C_ADDRESS_mit_sensors)
         
-        address += 2  # Nächste Adresse für den nächsten Sensor
+    print (Hubs_mit_Sensordaten) 
+    return Hubs_mit_Sensordaten
 
-        tof.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
-        sensors.append(tof)
+def select_mux_channel(bus, channel, PA_HUB_I2C_ADDRESS):
+    """
+    Wählt den entsprechenden Kanal des PA.Hub Multiplexers aus.
 
-    return sensors
+    Parameters:
+    -----------
+    bus: smbus.SMBus instance
+        Der I2C-Bus, an dem der Multiplexer angeschlossen ist.
+    channel: int
+        Der Multiplexer-Kanal (0-7), auf dem der gewünschte Sensor liegt.
+    """
+    bus.write_byte(PA_HUB_I2C_ADDRESS, 1 << channel)
+    time.sleep(0.02)  # Kleine Verzögerung nach Kanalwechsel

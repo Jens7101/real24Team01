@@ -332,9 +332,9 @@ class Rabot:
 
 if __name__ == '__main__':
     rabot = Rabot()
-    # rabot.test()
+    rabot.test()
     # rabot.drivestraight(50)
     # rabot.alignApwards()
     # rabot.rotate(50, "right", 90)
-    #rabot.first_demo_programm()
-    rabot.Rabot_test()
+    # rabot.first_demo_programm()
+    # rabot.Rabot_test()

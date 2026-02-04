@@ -13,7 +13,7 @@ import socket
 class RabotAPI:
     
     def __init__(self):
-        self.sensorwerte = [0] * 10
+        self.sensorwerte = [0] * 15
         # I2C-Busnummer (je nach Board kann das 0 oder 1 sein, bitte mit `i2cdetect -l` prüfen)
         self.I2C_BUS = 0 # i2c-0 → MIO10/11
 
@@ -22,20 +22,26 @@ class RabotAPI:
 
         ## -----------Distancesensors------------
         
-
-        # Liste der Multiplexer-Kanäle, an denen die VL53L0X-Sensoren angeschlossen sind
-        self.MUX_CHANNELS = [0, 1, 2, 3]  # Beispiel: Sensoren an Kanal 0 und 1 des PA.Hub
+        self.gpioPins = [0, 1, 2, 3, 4, 5, 6, 7] # GPIO-Pins für XSHUT der VL53L0X-Sensoren
 
         '''XSHUT über die GPIO's deaktivieren und wieder aktivieren, damit die initialiseirung neu funktioniert.'''
         self.gpio = flink.FlinkGPIO()
-        for pin in self.MUX_CHANNELS:
+        for pin in self.gpioPins:
             self.gpio.setDir(pin, True)
             self.gpio.setValue(pin, False)
-            time.sleep(0.01)
+            time.sleep(0.02)
             self.gpio.setValue(pin, True)
 
+        self.PA_HUB_I2C_ADDRESS1 = 0x70
+        self.PA_HUB_I2C_ADDRESS2 = 0x71
+
+        # Liste der Multiplexer-Kanäle, an denen die VL53L0X-Sensoren angeschlossen sind
+        self.Hub1 = [self.PA_HUB_I2C_ADDRESS1, [0, 1, 2, 3]]  # Kanäle für die Sensoren
+        self.Hub2 = [self.PA_HUB_I2C_ADDRESS2, [0, 1, 2, 3]]  # Kanäle für die Sensoren am zweiten Hub
+        self.Hubs = [self.Hub1, self.Hub2]
+
         # Initialisiere die ToF-Sensoren über den PA.Hub
-        self.tofs = init_vl53l0xx(self.I2C_BUS, self.MUX_CHANNELS)
+        self.tofs = init_vl53l0xx(self.I2C_BUS, self.Hubs)
 
         ## -----------Motoren------------
         self.rangeForward = [12, 13]
@@ -84,13 +90,18 @@ class RabotAPI:
     def getDistSensorValues(self):
         self.bus = smbus.SMBus(self.I2C_BUS)  # I2C-Bus öffnen
         i = 0
-        muxChanel = 0
 
-        for tof in self.tofs:
-            select_mux_channel(self.bus, self.MUX_CHANNELS[muxChanel])
-            self.sensorwerte[i] = tof.get_distance()
-            i += 1
-            muxChanel += 1
+        for Hub in self.tofs:
+            PA_HUB_I2C_ADDRESS = Hub[0]
+            
+            muxChanel = 0
+            for tof in Hub[1]:
+                print(muxChanel)
+                select_mux_channel(self.bus, muxChanel, PA_HUB_I2C_ADDRESS)  # Wähle den entsprechenden Kanal
+                self.sensorwerte[i] = tof.get_distance()
+                print(self.sensorwerte)
+                i += 1
+                muxChanel += 1
 
     
     def getPitchRoll(self):
