@@ -353,7 +353,7 @@ class RabotAPI:
             self.send_rest_command(ip, 0x6040, 0x00, "0006")
             self.send_rest_command(ip, 0x6040, 0x00, "0007")
             self.send_rest_command(ip, 0x6040, 0x00, "000F")
-            time.sleep(0.2)
+        time.sleep(0.2)
             
     def close_crawlers(self):       # Raupen abschalten
         self.crawler_stop()
@@ -364,13 +364,14 @@ class RabotAPI:
         return f"{value & 0xFFFFFFFF:08X}"
     
     def update_crawler_acc_dcc(self, acc, dcc): # Aktualisiert Beschleunigung und Verzögerung der Raupen
-        for ip in self.crawler_ips:
-            self.send_rest_command(ip, 0x6083, 0x00, self.dec_to_hex_8(acc))
-            self.send_rest_command(ip, 0x6084, 0x00, self.dec_to_hex_8(dcc))
+        self.send_rest_command(self.left_crawler, 0x6083, 0x00, self.dec_to_hex_8(acc))
+        self.send_rest_command(self.right_crawler, 0x6083, 0x00, self.dec_to_hex_8(acc))
+        self.send_rest_command(self.left_crawler, 0x6084, 0x00, self.dec_to_hex_8(dcc))
+        self.send_rest_command(self.right_crawler, 0x6084, 0x00, self.dec_to_hex_8(dcc))
 
     def crawler_drive(self, rpm):   # Vorwärts und Rückwärts
-        for ip in self.crawler_ips:
-            self.send_rest_command(ip, 0x60FF, 0x00, self.dec_to_hex_8(rpm))
+        self.send_rest_command(self.left_crawler, 0x60FF, 0x00, self.dec_to_hex_8(rpm))
+        self.send_rest_command(self.right_crawler, 0x60FF, 0x00, self.dec_to_hex_8(rpm))
 
     def crawler_stop(self):        # Stoppt die Raupen
         self.crawler_drive(0)
@@ -406,5 +407,3 @@ class RabotAPI:
         for ip in self.brushes_ips:
             self.send_rest_command(ip, 0x60FF, 0x00, self.dec_to_hex_8(0))
             
-
-    

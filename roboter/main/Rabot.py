@@ -384,6 +384,8 @@ class Rabot:
                     if frontSensors[0] > self.DistanzSolarpanel and frontSensors[1] > self.DistanzSolarpanel:
                         zustand = Zustand.RobiVierteldrehungLinks1
                         self.rabot.crawler_stop()
+                        self.rabot.crawler_drive(-rpm)
+                        time.sleep(1)
                         self.rabot.calculate_target_angle("left", 90)
                         self.rabot.crawler_turn_left(rpm)
                         print("Rabot macht eine Vierteldrehung nach links")

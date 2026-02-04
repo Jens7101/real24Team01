@@ -1,8 +1,11 @@
 import socket
 import time
-import keyboard         #pip install keyboard
+import keyboard         # Bibliothek muss ggf. installiert werden: pip install keyboard   
 
-# Funktionen für REST-Kommunikation
+# ========== Funktionen für REST-Kommunikation über HTTP ==========
+# Diese Funktionen stellen eine Verbindung zu den Motorcontrollern her und
+# senden CANopen-Befehle über HTTP/REST-Protokoll an die angegebene IP-Adresse.
+
 def send_rest_command(ip, index, subindex, hex_value):
     path = f"/od/{index:04X}/{subindex:02X}"
     body = f'"{hex_value}"'
@@ -121,7 +124,8 @@ def set_brush_rpm(rpm_value):
     for ip in brushes_ips:
         send_rest_command(ip, 0x60FF, 0x00, dec_to_hex_8(rpm_value))
 
-# Initialisierung
+# ========== Initialisierung der Motoren ==========
+# Setze Beschleunigung/Verzögerung und fahre Controller in Ready-Zustand
 update_crawler_acc_dcc()
 for ip in crawler_ips:
     send_rest_command(ip, 0x6060, 0x00, "03")
@@ -291,7 +295,8 @@ try:
                         send_rest_command(ip, 0x6040, 0x00, "000F")
                 time.sleep(0.3)
             
-            # Hier kommt dein automatischer Ablauf hin
+            # ========== Automatischer Fahrmodus ==========
+            # Führe eine vordefinierte Fahrtsequenz durch
             if auto_sequence_running:
                 # Prüfe auf Space-Taste während des Ablaufs (so kann jederzeit abgebrochen werden)
                 if keyboard.is_pressed("space"):
@@ -346,10 +351,10 @@ try:
                     step_time = 0.1
                     aborted = False
                     for action, duration in seq:
-                        # Rechne Schleifendurchläufe
+                        # Berechne Anzahl der Schleifen für die Aktion
                         loops = max(1, int(duration / step_time))
 
-                        # Setze Motoren entsprechend der Aktion
+                        # Setze Motor-RPM entsprechend der Aktion
                         if action == "forward":
                             set_crawler_rpm(seq_straight_speed, seq_straight_speed)
                         elif action == "turn_right":
@@ -439,8 +444,8 @@ finally:
     stop_crawlers()
     set_brush_rpm(0)
     for ip in crawler_ips:
-        send_rest_command(ip, 0x6040, 0x00, "0006")
+        send_rest_command(ip, 0x6040, 0x00, "0006")  # Disable Motor
     for ip in brushes_ips:
-        send_rest_command(ip, 0x6040, 0x00, "0006")
+        send_rest_command(ip, 0x6040, 0x00, "0006")  # Disable Motor
 
 
