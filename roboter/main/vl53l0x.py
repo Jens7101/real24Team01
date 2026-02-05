@@ -26,7 +26,7 @@ def init_vl53l0xx(i2c_bus_number, Hubs):
     Hubs_mit_Sensordaten = []
 
     bus = smbus.SMBus(i2c_bus_number)  # I2C-Bus öffnen
-    print(Hubs)
+    
 
     for Hub in Hubs:
         PA_HUB_I2C_ADDRESS = Hub[0]
@@ -44,8 +44,9 @@ def init_vl53l0xx(i2c_bus_number, Hubs):
             sensors.append(tof)
         PA_HUB_I2C_ADDRESS_mit_sensors.extend([PA_HUB_I2C_ADDRESS, sensors])
         Hubs_mit_Sensordaten.append(PA_HUB_I2C_ADDRESS_mit_sensors)
-        
-    print (Hubs_mit_Sensordaten) 
+        bus.write_byte(PA_HUB_I2C_ADDRESS, 0x00) # Alle Kanäle am Hub deaktivieren damit Bussprobleme vermieden werden
+
+    
     return Hubs_mit_Sensordaten
 
 def select_mux_channel(bus, channel, PA_HUB_I2C_ADDRESS):

@@ -44,12 +44,14 @@ class RabotAPI:
         self.tofs = init_vl53l0xx(self.I2C_BUS, self.Hubs)
 
         ## -----------Motoren------------
+        '''
         self.rangeForward = [12, 13]
         self.rangeBackward = [14, 15]
 
         for pin in self.rangeForward + self.rangeBackward:  # Listen zusammenführen
             self.gpio.setDir(pin, True)
             self.gpio.setValue(pin, False)
+        '''
 
         ## -----------_Yaw Tracking------------
         # Gyro bias (deg/s)
@@ -96,12 +98,11 @@ class RabotAPI:
             
             muxChanel = 0
             for tof in Hub[1]:
-                print(muxChanel)
                 select_mux_channel(self.bus, muxChanel, PA_HUB_I2C_ADDRESS)  # Wähle den entsprechenden Kanal
                 self.sensorwerte[i] = tof.get_distance()
-                print(self.sensorwerte)
                 i += 1
                 muxChanel += 1
+            self.bus.write_byte(PA_HUB_I2C_ADDRESS, 0x00) # Alle Kanäle am Hub deaktivieren damit Bussprobleme vermieden werden
 
     
     def getPitchRoll(self):
@@ -155,6 +156,7 @@ class RabotAPI:
     löschen wenn rest funtioniert
     --------------
 
+
     def getPitchRoll(self):
         """
         Reads accelerometer and computes pitch and roll (in degrees).
@@ -173,7 +175,7 @@ class RabotAPI:
 
         return self.pitch, self.roll
         '''
-
+        
     def get_absolute_yaw(self):
         """
         Integrate tilt-compensated yaw rate to obtain yaw in degrees.
