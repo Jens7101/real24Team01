@@ -358,45 +358,65 @@ class RabotAPI:
             print(f"{ip} → Fehler beim Lesen: {e}")
         return None
     
-
-    def startup_crawlers(self):
+    # Funktionen für Raupensteuerung
+    def startup_crawlers(self):     # Raupe Betriebsbereit machen
         self.update_crawler_acc_dcc(self.crawler_acc, self.crawler_dec)
         for ip in self.crawler_ips:
             self.send_rest_command(ip, 0x6060, 0x00, "03")
             self.send_rest_command(ip, 0x6040, 0x00, "0006")
             self.send_rest_command(ip, 0x6040, 0x00, "0007")
             self.send_rest_command(ip, 0x6040, 0x00, "000F")
-            time.sleep(0.2)
+        time.sleep(0.2)
             
-    def close_crawlers(self):
+    def close_crawlers(self):       # Raupen abschalten
+        self.crawler_stop()
         for ip in self.crawler_ips:
-            self.send_rest_command(ip, 0x6040, 0x00, "0006")
-        for ip in self.brushes_ips:
             self.send_rest_command(ip, 0x6040, 0x00, "0006")
 
     def dec_to_hex_8(self, value):
         return f"{value & 0xFFFFFFFF:08X}"
     
-    def update_crawler_acc_dcc(self, acc, dcc):
-        for ip in self.crawler_ips:
-            self.send_rest_command(ip, 0x6083, 0x00, self.dec_to_hex_8(acc))
-            self.send_rest_command(ip, 0x6084, 0x00, self.dec_to_hex_8(dcc))
+    def update_crawler_acc_dcc(self, acc, dcc): # Aktualisiert Beschleunigung und Verzögerung der Raupen
+        self.send_rest_command(self.left_crawler, 0x6083, 0x00, self.dec_to_hex_8(acc))
+        self.send_rest_command(self.right_crawler, 0x6083, 0x00, self.dec_to_hex_8(acc))
+        self.send_rest_command(self.left_crawler, 0x6084, 0x00, self.dec_to_hex_8(dcc))
+        self.send_rest_command(self.right_crawler, 0x6084, 0x00, self.dec_to_hex_8(dcc))
 
-    def set_crawler_rpm(self, left_rpm, right_rpm):
-        self.send_rest_command(self.left_crawler, 0x60FF, 0x00, self.dec_to_hex_8(left_rpm))
-        self.send_rest_command(self.right_crawler, 0x60FF, 0x00, self.dec_to_hex_8(right_rpm))
+    def crawler_drive(self, rpm):   # Vorwärts und Rückwärts
+        self.send_rest_command(self.left_crawler, 0x60FF, 0x00, self.dec_to_hex_8(rpm))
+        self.send_rest_command(self.right_crawler, 0x60FF, 0x00, self.dec_to_hex_8(rpm))
 
-    def stop_crawlers(self):
-        self.set_crawler_rpm(0, 0)
+    def crawler_stop(self):        # Stoppt die Raupen
+        self.crawler_drive(0)
 
-    def set_brush_rpm(self, rpm_value):
+    def crawler_turn_left(self, rpm):
+        self.send_rest_command(self.left_crawler, 0x60FF, 0x00, self.dec_to_hex_8(-rpm))
+        self.send_rest_command(self.right_crawler, 0x60FF, 0x00, self.dec_to_hex_8(rpm))
+    
+    def crawler_turn_right(self, rpm):
+        self.send_rest_command(self.left_crawler, 0x60FF, 0x00, self.dec_to_hex_8(rpm))
+        self.send_rest_command(self.right_crawler, 0x60FF, 0x00, self.dec_to_hex_8(-rpm))
+
+
+    # Funktionen für Bürstensteuerung
+    def startup_brushes(self, rpm = 1000):     # Bürsten starten
+        for ip in self.brushes_ips:
+            self.send_rest_command(ip, 0x6060, 0x00, "03")
+            self.send_rest_command(ip, 0x6040, 0x00, "0006")
+            self.send_rest_command(ip, 0x6040, 0x00, "0007")
+            self.send_rest_command(ip, 0x6040, 0x00, "000F")
+        self.set_brush_rpm(rpm)
+
+    def close_brushes(self):                    # Bürsten stoppen
+        self.stop_brushes()
+        for ip in self.brushes_ips:
+            self.send_rest_command(ip, 0x6040, 0x00, "0006")
+
+    def set_brush_rpm(self, rpm_value):         # Drehzahl der Bürsten einstellen
         for ip in self.brushes_ips:
             self.send_rest_command(ip, 0x60FF, 0x00, self.dec_to_hex_8(rpm_value))
-
     
-
-
-
-
-
-
+    def stop_brushes(self):                     # Bürsten stoppen
+        for ip in self.brushes_ips:
+            self.send_rest_command(ip, 0x60FF, 0x00, self.dec_to_hex_8(0))
+            

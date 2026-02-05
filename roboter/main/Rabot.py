@@ -321,12 +321,243 @@ class Rabot:
 
                 case _:
                     print ("Ungültiger Zustand: " + str(zustand))
+
+    def first_demo_programm_Motor(self):
+        Zustand = Enum ('Zustand', ['RobiDrehtBisHorizontal', 'RobiFährVorwärts1',
+            'RobiAusrichten', 'RobiVierteldrehungLinks1', 'RobiFährtVorwärts2',
+            'RobiDreht180', 'ViertelDrehungRechts_Zy', 'RobiFährtRunter_Zy',
+            'ViertelDrehungLinks_Zy', 'RobiFährtVorwärts_Zy', 'RobiStoppt',
+            "RobiFährtVorwärtsLetzteReihe"])
+        self.rabot.getPitchRoll()
+        zustand = Zustand.RobiDrehtBisHorizontal
+        ProgrammStatus = True
+        rpm = 500
+        self.rabot.startup_crawlers()
+        
+        for i in range(10):
+            self.rabot.getPitchRoll()
+            time.sleep(0.1)
+      
+
+        if self.rabot.pitch >= 0:
+            self.rabot.crawler_turn_left(rpm)
+            print("Rabot dreht links")
+            print(self.rabot.pitch)
+        elif self.rabot.pitch < 0:
+            self.rabot.crawler_turn_right(rpm)
+            print("Rabot dreht rechts")
+            print(self.rabot.pitch)
+
+
+        while ProgrammStatus:
+            time.sleep(1 / 1000) # Frequenz in der die Zustände abgefragt werden
+            match zustand:
+                case Zustand.RobiDrehtBisHorizontal:
+                    self.rabot.getPitchRoll()
+                    print("Pitch: " + str(self.rabot.pitch))
+                    if abs(self.rabot.pitch) < 1:
+                        zustand = Zustand.RobiFährVorwärts1
+                        self.rabot.crawler_drive(rpm)
+                        print("Rabot fährt vorwärts")
+
+                case Zustand.RobiFährVorwärts1:
+                    time.sleep(1)
+                    self.rabot.getDistSensorValues()
+                    print (self.rabot.sensorwerte)
+                    frontSensors = self.rabot.sensorwerte[0:2]
+                    print("Front Sensors: " + str(frontSensors))
+
+                    if frontSensors[0] > self.DistanzSolarpanel:
+                        self.rabot.crawler_stop()
+                        zustand = Zustand.RobiAusrichten
+                        self.rabot.crawler_turn_left(rpm)
+                        print("Rabot richtet sich aus") 
+                    elif frontSensors[1] > self.DistanzSolarpanel:
+                        self.rabot.crawler_stop()
+                        zustand = Zustand.RobiAusrichten
+                        self.rabot.crawler_turn_right(rpm)
+                        print("Rabot richtet sich aus")  
+
+                case Zustand.RobiAusrichten:
+                    self.rabot.getDistSensorValues()
+                    frontSensors = self.rabot.sensorwerte[0:2]
+                    if frontSensors[0] > self.DistanzSolarpanel and frontSensors[1] > self.DistanzSolarpanel:
+                        zustand = Zustand.RobiVierteldrehungLinks1
+                        self.rabot.crawler_stop()
+                        self.rabot.crawler_drive(-rpm)
+                        time.sleep(1)
+                        self.rabot.calculate_target_angle("left", 90)
+                        self.rabot.crawler_turn_left(rpm)
+                        print("Rabot macht eine Vierteldrehung nach links")
+
+                case Zustand.RobiVierteldrehungLinks1:
+                    if self.rabot.targetAngle -1 < self.rabot.get_absolute_yaw() < self.rabot.targetAngle +1:
+                        zustand = Zustand.RobiFährtVorwärts2
+                        self.rabot.crawler_drive(rpm)
+                        Vorwärts = 1
+                        print("Rabot fährt vorwärts")
+
+                case Zustand.RobiFährtVorwärts2:
+                    self.rabot.getDistSensorValues()
+                    frontSensors = self.rabot.sensorwerte[0:2]
+                    if frontSensors[0] > self.DistanzSolarpanel or frontSensors[1] > self.DistanzSolarpanel:
+                        self.rabot.crawler_stop()
+
+                        if Vorwärts == 2:
+                            zustand = Zustand.ViertelDrehungRechts_Zy
+                            # Parameter für Zyklus
+                            Drehen = 1
+                            rechtsLinks = "right"
+                            lastRow = False
+                            # Rabot macht eine Vierteldrehung nach rechts
+                            self.rabot.calculate_target_angle("right", 90)
+                            self.rabot.crawler_turn_right(rpm)
+                            print("Rabot macht eine Vierteldrehung nach rechts")
+
+                        if Vorwärts == 1:
+                            zustand = Zustand.RobiDreht180
+                            # Parameter für 180 Grad Drehung
+                            Vorwärts = 2
+                            # Rabot dreht sich um 180 Grad
+                            self.rabot.calculate_target_angle("left", 180)
+                            self.rabot.crawler_turn_left(rpm)
+                            print("Rabot dreht sich um 180 Grad")
+
+                case Zustand.RobiDreht180:
+                    if self.rabot.targetAngle -1 < self.rabot.get_absolute_yaw() < self.rabot.targetAngle +1:
+                        zustand = Zustand.RobiFährtVorwärts2
+                        print("Rabot hat sich um 180 Grad gedreht")
+                        self.rabot.startup_brushes()
+                    pass
+
+                case Zustand.ViertelDrehungRechts_Zy:
+                    print(self.rabot.get_absolute_yaw())
+                    print(self.rabot.targetAngle)
+                    if self.rabot.targetAngle -1 < self.rabot.get_absolute_yaw() < self.rabot.targetAngle +1:
+                        
+                        print(Drehen)
+                        if Drehen == 1:
+                            zustand = Zustand.RobiFährtRunter_Zy
+                            self.rabot.crawler_drive(rpm)
+                            print("Rabot fährt runter")
+                        elif Drehen == 2:
+                            zustand = Zustand.RobiFährtVorwärts_Zy
+                            # Parameter für Zyklus
+                            rechtsLinks = "left"
+                            self.rabot.crawler_drive(rpm)
+                            print("Rabot fährt geradeaus")
+                        elif lastRow == True:
+                            zustand = Zustand.RobiFährtVorwärtsLetzteReihe
+                            self.rabot.crawler_drive(rpm)
+                            print("Rabot fährt die letzte Reihe vorwärts")
+
+
+
+                case Zustand.RobiFährtRunter_Zy:
+                    time.sleep(2)
+                    self.rabot.getDistSensorValues()
+                    frontSensors = self.rabot.sensorwerte[0:2]
+                    if frontSensors[0] > self.DistanzSolarpanel or frontSensors[1] > self.DistanzSolarpanel:
+                        if rechtsLinks == "left":
+                            self.rabot.crawler_stop()
+                            zustand = Zustand.ViertelDrehungLinks_Zy
+                            # Parameter für Zyklus
+                            lastRow = True
+                            Drehen = 2
+                            self.rabot.calculate_target_angle("left", 90)
+                            self.rabot.crawler_turn_left(rpm)
+                            print("Rabot macht eine Vierteldrehung nach links")
+                            print("last row")
+                        elif rechtsLinks == "right":
+                            self.rabot.crawler_stop()
+                            zustand = zustand.ViertelDrehungRechts_Zy
+                            # Parameter für Zyklus
+                            lastRow = True
+                            Drehen = 2
+                            self.rabot.calculate_target_angle("right", 90)
+                            self.rabot.crawler_turn_right(rpm)
+                            print("Rabot macht eine Vierteldrehung nach rechts")
+                            print("last row")
+
+                    elif rechtsLinks == "left":
+                        zustand = Zustand.ViertelDrehungLinks_Zy
+                        Drehen = 2
+                        self.rabot.calculate_target_angle("left", 90)
+                        self.rabot.crawler_turn_left(rpm)
+                        print("Rabot macht eine Vierteldrehung nach links")
+
+                    elif rechtsLinks == "right":
+                        zustand = Zustand.ViertelDrehungRechts_Zy
+                        Drehen = 2
+                        self.rabot.calculate_target_angle("right", 90)
+                        self.rabot.crawler_turn_right(rpm)
+                        print("Rabot macht eine Vierteldrehung nach rechts")    
+
+                case Zustand.ViertelDrehungLinks_Zy:
+                    if self.rabot.targetAngle -1 < self.rabot.get_absolute_yaw() < self.rabot.targetAngle +1:
+                        
+                        if Drehen == 1:
+                            zustand = Zustand.RobiFährtRunter_Zy
+                            self.rabot.crawler_drive(rpm)
+                            print("Rabot fährt runter")
+                        elif Drehen == 2:
+                            if lastRow == True:
+                                zustand = Zustand.RobiFährtVorwärtsLetzteReihe
+                                self.rabot.crawler_drive(rpm)
+                                print("Rabot fährt die letzte Reihe vorwärts")
+                            else:
+                                zustand = Zustand.RobiFährtVorwärts_Zy
+                                # Parameter für Zyklus
+                                rechtsLinks = "right"
+                                # Rabot fährt geradeaus
+                                self.rabot.crawler_drive(rpm)
+                                print("Rabot fährt geradeaus")
+
+                case Zustand.RobiFährtVorwärts_Zy:
+                    self.rabot.getDistSensorValues()
+                    frontSensors = self.rabot.sensorwerte[0:2]
+                    if frontSensors[0] > self.DistanzSolarpanel or frontSensors[1] > self.DistanzSolarpanel:
+                        self.rabot.crawler_stop()
+
+                        if rechtsLinks == "left":
+                            zustand = Zustand.ViertelDrehungLinks_Zy
+                            # Parameter für Zyklus
+                            Drehen = 1
+                            # Rabot macht eine Vierteldrehung nach links
+                            self.rabot.calculate_target_angle("left", 90)
+                            self.rabot.crawler_turn_left(rpm)
+                            print("Rabot macht eine Vierteldrehung nach links")
+                        elif rechtsLinks == "right":
+                            zustand = Zustand.ViertelDrehungRechts_Zy
+                            # Parameter für Zyklus
+                            Drehen = 1
+                            # Rabot macht eine Vierteldrehung nach rechts
+                            self.rabot.calculate_target_angle("right", 90)
+                            self.rabot.crawler_turn_right(rpm)
+                            print("Rabot macht eine Vierteldrehung nach rechts")
+
+                case Zustand.RobiFährtVorwärtsLetzteReihe:
+                    self.rabot.getDistSensorValues()
+                    frontSensors = self.rabot.sensorwerte[0:2]
+                    if frontSensors[0] > self.DistanzSolarpanel or frontSensors[1] > self.DistanzSolarpanel:
+                        zustand = Zustand.RobiStoppt
+                        print("Rabot stoppt")
+
+                case Zustand.RobiStoppt:
+                    self.rabot.close_crawlers()
+                    self.rabot.close_brushes()
+                    ProgrammStatus = False
+
+                case _:
+                    print ("Ungültiger Zustand: " + str(zustand))           
+    
+    
     def Rabot_test(self):
         self.rabot.update_crawler_acc_dcc(5000,5000)
         self.rabot.startup_crawlers()
-        self.rabot.set_crawler_rpm(500,500)
+        self.rabot.crawler_drive(500)
         time.sleep(2)
-        self.rabot.stop_crawlers()
+        self.rabot.crawler_stop()
         self.rabot.close_crawlers()
 
 
@@ -337,4 +568,5 @@ if __name__ == '__main__':
     # rabot.alignApwards()
     # rabot.rotate(50, "right", 90)
     # rabot.first_demo_programm()
+    # rabot.first_demo_programm_Motor()
     # rabot.Rabot_test()
