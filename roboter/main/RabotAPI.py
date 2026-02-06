@@ -53,8 +53,21 @@ class RabotAPI:
         self._yaw = 0.0
         self._last_time = time.time()
         # Pitch/Roll in degrees (used elsewhere in your code)
-        self.pitch = 0.0
-        self.roll = 0.0
+        
+        # Lese Sensordaten
+        accel = self.mpuSensor.get_accel_data()
+        ax, ay, az = accel['x'], accel['y'], accel['z']
+        gyro = self.mpuSensor.get_gyro_data()
+        gx, gy, gz = gyro['x'], gyro['y'], gyro['z']
+
+        # Offset-Werte für Kalibrierung (anpassen nach Bedarf)
+        self.offset_roll = 0.0
+        self.offset_pitch = 3.32
+
+        # Beschleunigung → Roll/Pitch
+        self.roll = math.degrees(math.atan2(ay, az)) + self.offset_roll
+        self.pitch = math.degrees(math.atan2(-ax, math.sqrt(ay**2 + az**2))) + self.offset_pitch
+ 
         # Kalibriere das Gyroskop beim Start
         self.calibrate_gyro()
 
@@ -93,36 +106,65 @@ class RabotAPI:
             muxChanel += 1
 
     
+    def getPitchRoll_eigene_Funktion(self):
+        n = 10
+        accel_data = {'x': 0.0, 'y': 0.0, 'z': 0.0}
+        gyro_data = {'x': 0.0, 'y': 0.0, 'z': 0.0}
+
+        for i in range(n):
+            # Retrieve accelerometer data from the sensor.
+            accel_data = self.mpuSensor.get_accel_data()
+            time.sleep(0.01)  # Kleine Verzögerung zwischen den Messungen
+            # Retrieve gyroscope data from the sensor.
+            gyro_data = self.mpuSensor.get_gyro_data()
+            time.sleep(0.01)  # Kleine Verzögerung zwischen den Messungen
+            # Sum the data for averaging.
+            for key in accel_data:
+                accel_data[key] += accel_data[key]
+            for key in gyro_data:
+                gyro_data[key] += gyro_data[key]    
+        
+        # Average the data over n samples.
+        accel_data = {key: value / n for key, value in accel_data.items()}
+        gyro_data = {key: value / n for key, value in gyro_data.items()}
+
+
+
+        # Print accelerometer data.
+        print("Accelerometer data")
+        print("x: " + str(accel_data['x']))
+        print("y: " + str(accel_data['y']))
+        print("z: " + str(accel_data['z']))
+
+        # Print gyroscope data.
+        '''print("Gyroscope data")
+        print("x: " + str(gyro_data['x']))
+        print("y: " + str(gyro_data['y']))
+        print("z: " + str(gyro_data['z']))'''
+
+
+    
     def getPitchRoll(self):
         dt = 0.02  # Abtastzeit (20 ms → 50 Hz)
         alpha = 0.98  # Filterkonstante
 
-        # Anfangswerte aus Beschleunigung
+        # Lese Sensordaten
         accel = self.mpuSensor.get_accel_data()
         ax, ay, az = accel['x'], accel['y'], accel['z']
-        roll = math.degrees(math.atan2(ay, az))
-        pitch = math.degrees(math.atan2(-ax, math.sqrt(ay**2 + az**2)))
-
-        # Gyroskopdaten
         gyro = self.mpuSensor.get_gyro_data()
         gx, gy, gz = gyro['x'], gyro['y'], gyro['z']
 
-        # Integriere Gyro-Daten
-        roll_gyro = roll + gx * dt
-        pitch_gyro = pitch + gy * dt
+        # Beschleunigung → Roll/Pitch
+        roll_acc = math.degrees(math.atan2(ay, az)) + self.offset_roll
+        pitch_acc = math.degrees(math.atan2(-ax, math.sqrt(ay**2 + az**2))) + self.offset_pitch
 
-        # Beschleunigungsdaten
-        accel = self.mpuSensor.get_accel_data()
-        ax, ay, az = accel['x'], accel['y'], accel['z']
-        roll_acc = math.degrees(math.atan2(ay, az))
-        pitch_acc = math.degrees(math.atan2(-ax, math.sqrt(ay**2 + az**2)))
+        # Gyroskop-Integration (basierend auf LETZTEN Pitch/Roll-Werten)
+        roll_gyro = self.roll + gx * dt
+        pitch_gyro = self.pitch + gy * dt
 
         # Komplementärfilter
-        roll = alpha * roll_gyro + (1 - alpha) * roll_acc
-        pitch = alpha * pitch_gyro + (1 - alpha) * pitch_acc
-
-        self.roll = roll
-        self.pitch = pitch
+        self.roll = alpha * roll_gyro + (1 - alpha) * roll_acc
+        self.pitch = alpha * pitch_gyro + (1 - alpha) * pitch_acc
         
     def calibrate_gyro(self, samples: int = 200, delay: float = 0.01):
         """

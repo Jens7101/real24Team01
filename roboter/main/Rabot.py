@@ -77,6 +77,51 @@ class Rabot:
                 case _:
                     print ("Ungültiger Zustand: " + str(zustand))
 
+    def alignApwards_eigene_Lagemessung(self):
+
+        Zustand = Enum ('Zustand', ['RabotNotAligned', 'RabotAligned'])
+        zustand = Zustand.RabotNotAligned
+        ProgrammStatus = True
+        
+        rpm = 500
+        # self.rabot.startup_crawlers()
+        
+        for i in range(10):
+            self.rabot.getPitchRoll_eigene_Funktion()
+            time.sleep(0.1)
+      
+
+        if self.rabot.pitch >= 0:
+            # self.rabot.crawler_turn_left(rpm)
+            print("Rabot dreht links")
+            print(self.rabot.pitch)
+        elif self.rabot.pitch < 0:
+            #self.rabot.crawler_turn_right(rpm)
+            print("Rabot dreht rechts")
+            print(self.rabot.pitch)
+
+        zustand = Zustand.RabotAligned
+
+
+        print("Rabot Aligns Apwards")
+
+        while ProgrammStatus:
+            time.sleep(1 / 1000) # Frequenz in der die Zustände abgefragt werden
+            match zustand:
+                case Zustand.RabotNotAligned:
+                    self.rabot.getPitchRoll()
+                    print("Pitch: " + str(self.rabot.pitch) + " Roll: " + str(self.rabot.roll))
+                    if abs(self.rabot.pitch) < .2:
+                        zustand = Zustand.RabotAligned
+                        print("Rabot ist ausgerichtet")
+
+                case Zustand.RabotAligned:
+                    self.rabot.stop()
+                    ProgrammStatus = False
+
+                case _:
+                    print ("Ungültiger Zustand: " + str(zustand))
+
     def rotate(self, speed, direction, degree):
         Zustand = Enum ('Zustand', ['Turn', 'Turned'])
         
@@ -573,3 +618,4 @@ if __name__ == '__main__':
     # rabot.first_demo_programm()
     rabot.first_demo_programm_Motor()
     # rabot.Rabot_test()
+    # rabot.alignApwards_eigene_Lagemessung()
