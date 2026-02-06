@@ -62,7 +62,7 @@ class RabotAPI:
 
         # Offset-Werte für Kalibrierung (anpassen nach Bedarf)
         self.offset_roll = 0.0
-        self.offset_pitch = 3.32
+        self.offset_pitch = 1.33
 
         # Beschleunigung → Roll/Pitch
         self.roll = math.degrees(math.atan2(ay, az)) + self.offset_roll
@@ -145,14 +145,29 @@ class RabotAPI:
 
     
     def getPitchRoll(self):
-        dt = 0.02  # Abtastzeit (20 ms → 50 Hz)
-        alpha = 0.98  # Filterkonstante
+        # echtzeit dt
+        now = time.time()
+        dt = now - self._last_time
+        self._last_time = now
+
+        #  dt begrenzen (Fals loop hängen bleibt)
+        dt = max(0.001, min(dt, 0.1))
+
+        # Dynamisches alpha basierend auf dt (schneller bei größeren dt, langsamer bei kleineren dt)
+        tau = .055
+        alpha = tau / (tau + dt)
+        print (f"dt: {dt:.3f}s, alpha: {alpha:.3f}")
+
+
+        # dt = 0.02  # Abtastzeit (20 ms → 50 Hz)
+        # alpha = 0.8  # Filterkonstante
 
         # Lese Sensordaten
         accel = self.mpuSensor.get_accel_data()
         ax, ay, az = accel['x'], accel['y'], accel['z']
         gyro = self.mpuSensor.get_gyro_data()
-        gx, gy, gz = gyro['x'], gyro['y'], gyro['z']
+        gx, gy, gz = gyro['x'] - self.gyro_bias['x'], gyro['y'] - self.gyro_bias['y'], gyro['z'] - self.gyro_bias['z']
+        
 
         # Beschleunigung → Roll/Pitch
         roll_acc = math.degrees(math.atan2(ay, az)) + self.offset_roll
@@ -180,6 +195,7 @@ class RabotAPI:
         self.gyro_bias['x'] = sx / samples
         self.gyro_bias['y'] = sy / samples
         self.gyro_bias['z'] = sz / samples
+        print(f"Gyro bias calibrated: {self.gyro_bias}")
 
     ''' 
     zweite varsion der getPitchRoll funktion ohne komplementärfilter
