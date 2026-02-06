@@ -430,6 +430,10 @@ class RabotAPI:
         self.send_rest_command(self.left_crawler, 0x60FF, 0x00, self.dec_to_hex_8(rpm))
         self.send_rest_command(self.right_crawler, 0x60FF, 0x00, self.dec_to_hex_8(rpm))
 
+    def crawler_drive_seperat(self, rpm_links, rpm_rechts):   # Vorwärts und Rückwärts
+        self.send_rest_command(self.left_crawler, 0x60FF, 0x00, self.dec_to_hex_8(rpm_links))
+        self.send_rest_command(self.right_crawler, 0x60FF, 0x00, self.dec_to_hex_8(rpm_rechts))
+
     def crawler_stop(self):        # Stoppt die Raupen
         self.crawler_drive(0)
 

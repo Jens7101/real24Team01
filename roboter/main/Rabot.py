@@ -418,12 +418,12 @@ class Rabot:
                     if frontSensors[0] > self.DistanzSolarpanel:
                         self.rabot.crawler_stop()
                         zustand = Zustand.RobiAusrichten
-                        self.rabot.crawler_turn_left(rpm)
+                        self.rabot.crawler_drive_seperat(0, rpm)
                         print("Rabot richtet sich aus") 
                     elif frontSensors[1] > self.DistanzSolarpanel:
                         self.rabot.crawler_stop()
                         zustand = Zustand.RobiAusrichten
-                        self.rabot.crawler_turn_right(rpm)
+                        self.rabot.crawler_drive_seperat(rpm, 0)
                         print("Rabot richtet sich aus")  
 
                 case Zustand.RobiAusrichten:
@@ -534,6 +534,7 @@ class Rabot:
                             print("last row")
 
                     elif self.timer_abgelaufen == True:
+                        timer.cancel()
                         if rechtsLinks == "left":
                             zustand = Zustand.ViertelDrehungLinks_Zy
                             Drehen = 2
