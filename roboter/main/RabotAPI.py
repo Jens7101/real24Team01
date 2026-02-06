@@ -156,7 +156,6 @@ class RabotAPI:
         # Dynamisches alpha basierend auf dt (schneller bei größeren dt, langsamer bei kleineren dt)
         tau = .055
         alpha = tau / (tau + dt)
-        print (f"dt: {dt:.3f}s, alpha: {alpha:.3f}")
 
 
         # dt = 0.02  # Abtastzeit (20 ms → 50 Hz)
@@ -237,7 +236,7 @@ class RabotAPI:
         self.getPitchRoll()
         roll_rad = math.radians(self.roll)
         pitch_rad = math.radians(self.pitch)
-
+        time.sleep(0.001)  # Kleine Verzögerung für stabilere Messung
         # read gyro (assumed in deg/s), subtract bias, convert to rad/s
         g = self.mpuSensor.get_gyro_data()
         gx = math.radians(g['x'] - self.gyro_bias['x'])
