@@ -534,7 +534,6 @@ class Rabot:
                             print("last row")
 
                     elif self.timer_abgelaufen == True:
-                        timer.cancel()
                         if rechtsLinks == "left":
                             zustand = Zustand.ViertelDrehungLinks_Zy
                             Drehen = 2
@@ -556,6 +555,7 @@ class Rabot:
                             zustand = Zustand.RobiFährtRunter_Zy
                             self.timer_abgelaufen = False
                             timer = Timer(2.0, self.Timer_abgelaufen)
+                            timer.start()
                             self.rabot.crawler_drive(rpm)
                             print("Rabot fährt runter")
                         elif Drehen == 2:
