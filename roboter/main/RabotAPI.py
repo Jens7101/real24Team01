@@ -61,8 +61,21 @@ class RabotAPI:
         self._yaw = 0.0
         self._last_time = time.time()
         # Pitch/Roll in degrees (used elsewhere in your code)
-        self.pitch = 0.0
-        self.roll = 0.0
+        
+        # Lese Sensordaten
+        accel = self.mpuSensor.get_accel_data()
+        ax, ay, az = accel['x'], accel['y'], accel['z']
+        gyro = self.mpuSensor.get_gyro_data()
+        gx, gy, gz = gyro['x'], gyro['y'], gyro['z']
+
+        # Offset-Werte für Kalibrierung (anpassen nach Bedarf)
+        self.offset_roll = 0.0
+        self.offset_pitch = 1.33
+
+        # Beschleunigung → Roll/Pitch
+        self.roll = math.degrees(math.atan2(ay, az)) + self.offset_roll
+        self.pitch = math.degrees(math.atan2(-ax, math.sqrt(ay**2 + az**2))) + self.offset_pitch
+ 
         # Kalibriere das Gyroskop beim Start
         self.calibrate_gyro()
 
@@ -105,36 +118,79 @@ class RabotAPI:
             self.bus.write_byte(PA_HUB_I2C_ADDRESS, 0x00) # Alle Kanäle am Hub deaktivieren damit Bussprobleme vermieden werden
 
     
+    def getPitchRoll_eigene_Funktion(self):
+        n = 10
+        accel_data = {'x': 0.0, 'y': 0.0, 'z': 0.0}
+        gyro_data = {'x': 0.0, 'y': 0.0, 'z': 0.0}
+
+        for i in range(n):
+            # Retrieve accelerometer data from the sensor.
+            accel_data = self.mpuSensor.get_accel_data()
+            time.sleep(0.01)  # Kleine Verzögerung zwischen den Messungen
+            # Retrieve gyroscope data from the sensor.
+            gyro_data = self.mpuSensor.get_gyro_data()
+            time.sleep(0.01)  # Kleine Verzögerung zwischen den Messungen
+            # Sum the data for averaging.
+            for key in accel_data:
+                accel_data[key] += accel_data[key]
+            for key in gyro_data:
+                gyro_data[key] += gyro_data[key]    
+        
+        # Average the data over n samples.
+        accel_data = {key: value / n for key, value in accel_data.items()}
+        gyro_data = {key: value / n for key, value in gyro_data.items()}
+
+
+
+        # Print accelerometer data.
+        print("Accelerometer data")
+        print("x: " + str(accel_data['x']))
+        print("y: " + str(accel_data['y']))
+        print("z: " + str(accel_data['z']))
+
+        # Print gyroscope data.
+        '''print("Gyroscope data")
+        print("x: " + str(gyro_data['x']))
+        print("y: " + str(gyro_data['y']))
+        print("z: " + str(gyro_data['z']))'''
+
+
+    
     def getPitchRoll(self):
-        dt = 0.02  # Abtastzeit (20 ms → 50 Hz)
-        alpha = 0.98  # Filterkonstante
+        # echtzeit dt
+        now = time.time()
+        dt = now - self._last_time
+        self._last_time = now
 
-        # Anfangswerte aus Beschleunigung
+        #  dt begrenzen (Fals loop hängen bleibt)
+        dt = max(0.001, min(dt, 0.1))
+
+        # Dynamisches alpha basierend auf dt (schneller bei größeren dt, langsamer bei kleineren dt)
+        tau = .055
+        alpha = tau / (tau + dt)
+
+
+        # dt = 0.02  # Abtastzeit (20 ms → 50 Hz)
+        # alpha = 0.8  # Filterkonstante
+
+        # Lese Sensordaten
         accel = self.mpuSensor.get_accel_data()
         ax, ay, az = accel['x'], accel['y'], accel['z']
-        roll = math.degrees(math.atan2(ay, az))
-        pitch = math.degrees(math.atan2(-ax, math.sqrt(ay**2 + az**2)))
-
-        # Gyroskopdaten
         gyro = self.mpuSensor.get_gyro_data()
-        gx, gy, gz = gyro['x'], gyro['y'], gyro['z']
+        gx, gy, gz = gyro['x'] - self.gyro_bias['x'], gyro['y'] - self.gyro_bias['y'], gyro['z'] - self.gyro_bias['z']
+        
 
-        # Integriere Gyro-Daten
-        roll_gyro = roll + gx * dt
-        pitch_gyro = pitch + gy * dt
+        # Beschleunigung → Roll/Pitch
+        roll_acc = math.degrees(math.atan2(ay, az)) + self.offset_roll
+        pitch_acc = math.degrees(math.atan2(-ax, math.sqrt(ay**2 + az**2))) + self.offset_pitch
 
-        # Beschleunigungsdaten
-        accel = self.mpuSensor.get_accel_data()
-        ax, ay, az = accel['x'], accel['y'], accel['z']
-        roll_acc = math.degrees(math.atan2(ay, az))
-        pitch_acc = math.degrees(math.atan2(-ax, math.sqrt(ay**2 + az**2)))
+        # Gyroskop-Integration (basierend auf LETZTEN Pitch/Roll-Werten)
+        roll_gyro = self.roll + gx * dt
+        pitch_gyro = self.pitch + gy * dt
 
         # Komplementärfilter
-        roll = alpha * roll_gyro + (1 - alpha) * roll_acc
-        pitch = alpha * pitch_gyro + (1 - alpha) * pitch_acc
-
-        self.roll = roll
-        self.pitch = pitch
+        self.roll = alpha * roll_gyro + (1 - alpha) * roll_acc
+        self.pitch = alpha * pitch_gyro + (1 - alpha) * pitch_acc
         
     def calibrate_gyro(self, samples: int = 200, delay: float = 0.01):
         """
@@ -150,6 +206,7 @@ class RabotAPI:
         self.gyro_bias['x'] = sx / samples
         self.gyro_bias['y'] = sy / samples
         self.gyro_bias['z'] = sz / samples
+        print(f"Gyro bias calibrated: {self.gyro_bias}")
 
     ''' 
     zweite varsion der getPitchRoll funktion ohne komplementärfilter
@@ -192,7 +249,7 @@ class RabotAPI:
         self.getPitchRoll()
         roll_rad = math.radians(self.roll)
         pitch_rad = math.radians(self.pitch)
-
+        time.sleep(0.001)  # Kleine Verzögerung für stabilere Messung
         # read gyro (assumed in deg/s), subtract bias, convert to rad/s
         g = self.mpuSensor.get_gyro_data()
         gx = math.radians(g['x'] - self.gyro_bias['x'])
@@ -385,6 +442,10 @@ class RabotAPI:
     def crawler_drive(self, rpm):   # Vorwärts und Rückwärts
         self.send_rest_command(self.left_crawler, 0x60FF, 0x00, self.dec_to_hex_8(rpm))
         self.send_rest_command(self.right_crawler, 0x60FF, 0x00, self.dec_to_hex_8(rpm))
+
+    def crawler_drive_seperat(self, rpm_links, rpm_rechts):   # Vorwärts und Rückwärts
+        self.send_rest_command(self.left_crawler, 0x60FF, 0x00, self.dec_to_hex_8(rpm_links))
+        self.send_rest_command(self.right_crawler, 0x60FF, 0x00, self.dec_to_hex_8(rpm_rechts))
 
     def crawler_stop(self):        # Stoppt die Raupen
         self.crawler_drive(0)
