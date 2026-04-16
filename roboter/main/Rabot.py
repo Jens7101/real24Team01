@@ -5,6 +5,8 @@ import random
 import flink
 import time
 from threading import Timer
+import threading
+import queue
 
 class Rabot:
 
@@ -12,6 +14,7 @@ class Rabot:
 
         '''Stellvertreter Objekt des Roboters erstellen'''
         self.rabot = RabotAPI()
+        self.q = queue.Queue()
         # Parameter setzen
         self.DistanzSolarpanel = 150
 
@@ -371,6 +374,17 @@ class Rabot:
     def Timer_abgelaufen(self):
         self.timer_abgelaufen = True
 
+    
+    def Thread_detect_obstacle(self):
+        running = True
+        while running:
+            self.rabot.getDistSensorValues()
+            frontSensors = self.rabot.sensorwerte[0:2]
+            if frontSensors[0] > self.DistanzSolarpanel or frontSensors[1] > self.DistanzSolarpanel:
+                running = False
+                self.q.put("obstacle_detected") #Thred meldet Hindernis erkannt
+            time.sleep(0.1)
+
 
     def first_demo_programm_Motor(self):
         Zustand = Enum ('Zustand', ['RobiDrehtBisHorizontal', 'RobiFährVorwärts1',
@@ -403,6 +417,7 @@ class Rabot:
 
         while ProgrammStatus:
             time.sleep(1 / 1000) # Frequenz in der die Zustände abgefragt werden
+
             match zustand:
                 case Zustand.RobiDrehtBisHorizontal:
                     self.rabot.getPitchRoll()
