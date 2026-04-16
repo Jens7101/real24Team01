@@ -376,13 +376,16 @@ class Rabot:
 
     
     def Thread_detect_obstacle(self):
-        running = True
-        while running:
+        hindernis_aktiv = False
+
+        while self.ProgrammStatus:
             self.rabot.getDistSensorValues()
             frontSensors = self.rabot.sensorwerte[0:2]
-            if frontSensors[0] > self.DistanzSolarpanel or frontSensors[1] > self.DistanzSolarpanel:
-                running = False
+            if frontSensors[0] > self.DistanzSolarpanel or frontSensors[1] > self.DistanzSolarpanel and not hindernis_aktiv:
+                hindernis_aktiv = True
                 self.q.put("obstacle_detected") #Thred meldet Hindernis erkannt
+            elif frontSensors[0] <= self.DistanzSolarpanel and frontSensors[1] <= self.DistanzSolarpanel and hindernis_aktiv:
+                hindernis_aktiv = False
             time.sleep(0.1)
 
 
@@ -391,10 +394,17 @@ class Rabot:
             'RobiAusrichten', 'RobiVierteldrehungLinks1', 'RobiFährtVorwärts2',
             'RobiDreht180', 'ViertelDrehungRechts_Zy', 'RobiFährtRunter_Zy',
             'ViertelDrehungLinks_Zy', 'RobiFährtVorwärts_Zy', 'RobiStoppt',
-            "RobiFährtVorwärtsLetzteReihe"])
+            "RobiFährtVorwärtsLetzteReihe", "HindernisErkannt"])
+        
+        # Starte Thread für Hindernis Erkennung
+        obstacle_thread = threading.Thread(target=self.Thread_detect_obstacle)
+        obstacle_thread.start()
+
+
+        
         self.rabot.getPitchRoll()
         zustand = Zustand.RobiDrehtBisHorizontal
-        ProgrammStatus = True
+        self.ProgrammStatus = True
         rpm = 500
         self.rabot.startup_crawlers()
         self.drive_back_time = 1.5
@@ -415,8 +425,18 @@ class Rabot:
 
         
 
-        while ProgrammStatus:
+        while self.ProgrammStatus:
             time.sleep(1 / 1000) # Frequenz in der die Zustände abgefragt werden
+
+            # abfrage Hindernis Erkennung in eigenem Thread
+            try:
+                state = self.q.get(timeout=1)
+                if state == "obstacle_detected":
+                    previesZustand = zustand # vorherigen Zustand speichern, um nach der Hindernisbewältigung fortzufahren
+                    zustand = Zustand.HindernisErkannt
+
+            except queue.Empty:
+                pass
 
             match zustand:
                 case Zustand.RobiDrehtBisHorizontal:
@@ -620,10 +640,17 @@ class Rabot:
                         zustand = Zustand.RobiStoppt
                         print("Rabot stoppt")
 
+                case Zustand.HindernisErkannt:
+                    zustand = Zustand.RobiStoppt
+                    self.rabot.crawler_stop()
+                    print("Hindernis erkannt, Rabot stoppt")
+
                 case Zustand.RobiStoppt:
                     self.rabot.close_crawlers()
                     self.rabot.close_brushes()
-                    ProgrammStatus = False
+                    self.ProgrammStatus = False
+                    obstacle_thread.join()
+                    print("Programm beendet")
 
                 case _:
                     print ("Ungültiger Zustand: " + str(zustand))           
