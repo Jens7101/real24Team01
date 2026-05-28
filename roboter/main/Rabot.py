@@ -380,7 +380,7 @@ class Rabot:
 
         while self.ProgrammStatus:
             self.rabot.getDistSensorValues()
-            frontSensors = self.rabot.sensorwerte[0:2]
+            frontSensors = self.rabot.sensorwerte[4:5] # Sensoren für Hinderniserkennung
             if frontSensors[0] > self.DistanzSolarpanel or frontSensors[1] > self.DistanzSolarpanel and not hindernis_aktiv:
                 hindernis_aktiv = True
                 self.q.put("obstacle_detected") #Thred meldet Hindernis erkannt
@@ -396,6 +396,8 @@ class Rabot:
             'ViertelDrehungLinks_Zy', 'RobiFährtVorwärts_Zy', 'RobiStoppt',
             "RobiFährtVorwärtsLetzteReihe", "HindernisErkannt"])
         
+        self.ProgrammStatus = True
+
         # Starte Thread für Hindernis Erkennung
         obstacle_thread = threading.Thread(target=self.Thread_detect_obstacle)
         obstacle_thread.start()
@@ -404,7 +406,6 @@ class Rabot:
         
         self.rabot.getPitchRoll()
         zustand = Zustand.RobiDrehtBisHorizontal
-        self.ProgrammStatus = True
         rpm = 500
         self.rabot.startup_crawlers()
         self.drive_back_time = 1.5

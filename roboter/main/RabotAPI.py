@@ -9,11 +9,13 @@ import flink
 import time
 import math
 import socket
+import threading
 
 class RabotAPI:
     
     def __init__(self):
         self.sensorwerte = [0] * 15
+        self.i2c_lock = threading.RLock()
         # I2C-Busnummer (je nach Board kann das 0 oder 1 sein, bitte mit `i2cdetect -l` prüfen)
         self.I2C_BUS = 0 # i2c-0 → MIO10/11
 
@@ -36,9 +38,9 @@ class RabotAPI:
         self.PA_HUB_I2C_ADDRESS2 = 0x71
 
         # Liste der Multiplexer-Kanäle, an denen die VL53L0X-Sensoren angeschlossen sind
-        self.Hub1 = [self.PA_HUB_I2C_ADDRESS1, [0, 1, 2, 3]]  # Kanäle für die Sensoren
-        self.Hub2 = [self.PA_HUB_I2C_ADDRESS2, [0, 1, 2, 3]]  # Kanäle für die Sensoren am zweiten Hub
-        self.Hubs = [self.Hub1, self.Hub2]
+        self.Hub1 = [self.PA_HUB_I2C_ADDRESS1, [0, 1, 2, 3, 4, 5]]  # Kanäle für die Sensoren
+        # self.Hub2 = [self.PA_HUB_I2C_ADDRESS2, [0, 1]]  # Kanäle für die Sensoren am zweiten Hub
+        self.Hubs = [self.Hub1]
 
         # Initialisiere die ToF-Sensoren über den PA.Hub
         self.tofs = init_vl53l0xx(self.I2C_BUS, self.Hubs)
@@ -103,22 +105,26 @@ class RabotAPI:
 
         
     def getDistSensorValues(self):
-        self.bus = smbus.SMBus(self.I2C_BUS)  # I2C-Bus öffnen
-        i = 0
+        
+        with self.i2c_lock:
+        
+            self.bus = smbus.SMBus(self.I2C_BUS)  # I2C-Bus öffnen
+            i = 0
 
-        for Hub in self.tofs:
-            PA_HUB_I2C_ADDRESS = Hub[0]
-            
-            muxChanel = 0
-            for tof in Hub[1]:
-                select_mux_channel(self.bus, muxChanel, PA_HUB_I2C_ADDRESS)  # Wähle den entsprechenden Kanal
-                self.sensorwerte[i] = tof.get_distance()
-                i += 1
-                muxChanel += 1
-            self.bus.write_byte(PA_HUB_I2C_ADDRESS, 0x00) # Alle Kanäle am Hub deaktivieren damit Bussprobleme vermieden werden
+            for Hub in self.tofs:
+                PA_HUB_I2C_ADDRESS = Hub[0]
+                
+                muxChanel = 0
+                for tof in Hub[1]:
+                    select_mux_channel(self.bus, muxChanel, PA_HUB_I2C_ADDRESS)  # Wähle den entsprechenden Kanal
+                    self.sensorwerte[i] = tof.get_distance()
+                    i += 1
+                    muxChanel += 1
+                self.bus.write_byte(PA_HUB_I2C_ADDRESS, 0x00) # Alle Kanäle am Hub deaktivieren damit Bussprobleme vermieden werden
 
     
     def getPitchRoll_eigene_Funktion(self):
+
         n = 10
         accel_data = {'x': 0.0, 'y': 0.0, 'z': 0.0}
         gyro_data = {'x': 0.0, 'y': 0.0, 'z': 0.0}
@@ -239,39 +245,41 @@ class RabotAPI:
         Uses gyro bias subtraction and pitch/roll from accel.
         Updates self._yaw (degrees).
         """
-        now = time.time()
-        dt = now - getattr(self, '_last_time', now)
-        if dt <= 0:
-            dt = 1e-6
-        self._last_time = now
 
-        # update pitch/roll
-        self.getPitchRoll()
-        roll_rad = math.radians(self.roll)
-        pitch_rad = math.radians(self.pitch)
-        time.sleep(0.001)  # Kleine Verzögerung für stabilere Messung
-        # read gyro (assumed in deg/s), subtract bias, convert to rad/s
-        g = self.mpuSensor.get_gyro_data()
-        gx = math.radians(g['x'] - self.gyro_bias['x'])
-        gy = math.radians(g['y'] - self.gyro_bias['y'])
-        gz = math.radians(g['z'] - self.gyro_bias['z'])
+        with self.i2c_lock:
+            now = time.time()
+            dt = now - getattr(self, '_last_time', now)
+            if dt <= 0:
+                dt = 1e-6
+            self._last_time = now
 
-        # compute yaw rate (psi_dot) from body rates using Euler relation:
-        # psi_dot = sin(phi)/cos(theta) * q + cos(phi)/cos(theta) * r
-        # where p=gx, q=gy, r=gz and phi=roll, theta=pitch
-        cos_pitch = math.cos(pitch_rad)
-        if abs(cos_pitch) < 1e-3:
-            # Gimbal lock: skip update to avoid large errors
+            # update pitch/roll
+            self.getPitchRoll()
+            roll_rad = math.radians(self.roll)
+            pitch_rad = math.radians(self.pitch)
+            time.sleep(0.001)  # Kleine Verzögerung für stabilere Messung
+            # read gyro (assumed in deg/s), subtract bias, convert to rad/s
+            g = self.mpuSensor.get_gyro_data()
+            gx = math.radians(g['x'] - self.gyro_bias['x'])
+            gy = math.radians(g['y'] - self.gyro_bias['y'])
+            gz = math.radians(g['z'] - self.gyro_bias['z'])
+
+            # compute yaw rate (psi_dot) from body rates using Euler relation:
+            # psi_dot = sin(phi)/cos(theta) * q + cos(phi)/cos(theta) * r
+            # where p=gx, q=gy, r=gz and phi=roll, theta=pitch
+            cos_pitch = math.cos(pitch_rad)
+            if abs(cos_pitch) < 1e-3:
+                # Gimbal lock: skip update to avoid large errors
+                return self._yaw
+
+            psi_dot = (math.sin(roll_rad) / cos_pitch) * gy + (math.cos(roll_rad) / cos_pitch) * gz
+
+            # integrate (yaw in radians)
+            self._yaw_rad += psi_dot * dt
+            # normalize to [0,360)
+            self._yaw = (math.degrees(self._yaw_rad)) % 360.0
+
             return self._yaw
-
-        psi_dot = (math.sin(roll_rad) / cos_pitch) * gy + (math.cos(roll_rad) / cos_pitch) * gz
-
-        # integrate (yaw in radians)
-        self._yaw_rad += psi_dot * dt
-        # normalize to [0,360)
-        self._yaw = (math.degrees(self._yaw_rad)) % 360.0
-
-        return self._yaw
 
     def reset_yaw(self):
         self._yaw_rad = 0.0
