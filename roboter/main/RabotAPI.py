@@ -1,4 +1,12 @@
 
+"""
+RabotAPI
+----------
+Kapselt Sensor- und Aktuator-Funktionen des Roboters.
+Enthält IMU-Verarbeitung (mpu6050), VL53L0X ToF-Sensor-Initialisierung
+über PA.Hub Multiplexer sowie REST-basierte Motor- und Bürstensteuerung.
+"""
+
 from mpu6050 import mpu6050
 from driver.vl53l0x_helper import init_vl53l0x
 import importlib
@@ -13,8 +21,10 @@ import socket
 class RabotAPI:
     
     def __init__(self):
+        # Sensorwert-Cache (wird zur Laufzeit an die tatsächliche Anzahl an Sensoren angepasst)
         self.sensorwerte = [0] * 15
-        # I2C-Busnummer (je nach Board kann das 0 oder 1 sein, bitte mit `i2cdetect -l` prüfen)
+        # I2C-Busnummer: je nach Board 0 oder 1. Bei Problemen mit I2C den Bus prüfen
+        # (z. B. mit `i2cdetect -l`) und ggf. hier anpassen.
         self.I2C_BUS = 0 # i2c-0 → MIO10/11
 
         self._last_pitchroll_time = 0
@@ -27,7 +37,8 @@ class RabotAPI:
         
         self.gpioPins = [0, 1, 2, 3, 4, 5, 6, 7] # GPIO-Pins für XSHUT der VL53L0X-Sensoren
 
-        '''XSHUT über die GPIO's deaktivieren und wieder aktivieren, damit die initialiseirung neu funktioniert.'''
+        # XSHUT über die GPIOs deaktivieren und wieder aktivieren. Diese Sequenz
+        # sorgt dafür, dass VL53L0X-Sensoren nach Power-On sauber neu initialisiert werden.
         self.gpio = flink.FlinkGPIO()
         for pin in self.gpioPins:
             self.gpio.setDir(pin, True)
@@ -35,6 +46,8 @@ class RabotAPI:
             time.sleep(0.02)
             self.gpio.setValue(pin, True)
 
+        # PA.Hub I2C-Adressen (Multiplexer). Hubs steuern die XSHUT-Leitungen
+        # zu den VL53L0X-Sensoren. Bei anderen Hardware-Setups anpassen.
         self.PA_HUB_I2C_ADDRESS1 = 0x70
         self.PA_HUB_I2C_ADDRESS2 = 0x71
 
@@ -43,7 +56,8 @@ class RabotAPI:
         # self.Hub2 = [self.PA_HUB_I2C_ADDRESS2, [0, 1]]  # Kanäle für die Sensoren am zweiten Hub
         self.Hubs = [self.Hub1]
 
-        # Initialisiere die ToF-Sensoren über den PA.Hub
+        # Initialisiere die ToF-Sensoren über den PA.Hub.
+        # Rückgabeformat: Liste von [PA_HUB_I2C_ADDRESS, [tof_obj,...]] Einträgen.
         self.tofs = init_vl53l0xx(self.I2C_BUS, self.Hubs)
 
         # --- FLATTEN + ROUND ROBIN SETUP ---
@@ -60,7 +74,7 @@ class RabotAPI:
 
         self.tof_index = 0
 
-        # I2C Bus nur EINMAL öffnen
+        # I2C-Bus nur einmal öffnen und wiederverwenden (effizienter)
         self.bus = smbus.SMBus(self.I2C_BUS)
 
         ## -----------Motoren------------
@@ -74,29 +88,29 @@ class RabotAPI:
         '''
 
         ## -----------_Yaw Tracking------------
-        # Gyro bias (deg/s)
+        # Gyro-Bias (deg/s) wird bei `calibrate_gyro()` ermittelt und subtrahiert
         self.gyro_bias = {'x': 0.0, 'y': 0.0, 'z': 0.0}
-        # Yaw state: keep _yaw as degrees for compatibility with Rabot.rotate180
+        # interne Yaw-Integration in Radiant; `self._yaw` hält denselben Wert in Grad
         self._yaw_rad = 0.0
         self._yaw = 0.0
         self._last_time = time.time()
         # Pitch/Roll in degrees (used elsewhere in your code)
         
-        # Lese Sensordaten
+        # Erste Sensormessung zur Initialisierung von Roll/Pitch.
+        # Offsets können an die tatsächliche Montagelage des Boards angepasst werden.
         self.accel = self.mpuSensor.get_accel_data()
         ax, ay, az = self.accel['x'], self.accel['y'], self.accel['z']
         self.gyro = self.mpuSensor.get_gyro_data()
-        gx, gy, gz = self.gyro['x'], self.gyro['y'], self.gyro['z']
 
-        # Offset-Werte für Kalibrierung (anpassen nach Bedarf)
+        # Offsets für Roll/Pitch-Kompensation
         self.offset_roll = 0.0
         self.offset_pitch = 1.33
 
-        # Beschleunigung → Roll/Pitch
+        # Beschleunigungsdaten in Roll/Pitch (Grad)
         self.roll = math.degrees(math.atan2(ay, az)) + self.offset_roll
         self.pitch = math.degrees(math.atan2(-ax, math.sqrt(ay**2 + az**2))) + self.offset_pitch
- 
-        # Kalibriere das Gyroskop beim Start
+
+        # Kalibriere das Gyroskop (Erwartung: Gerät steht ruhig während Kalibrierung)
         self.calibrate_gyro()
 
 
@@ -136,18 +150,20 @@ class RabotAPI:
         hub_addr = entry["hub"]
         tof = entry["tof"]
 
-        # Kanal = Index innerhalb Hub (robust über modulo)
+        # Kanal = Index innerhalb Hub (robust über modulo). `tof_list` ist eine
+        # flache Liste über alle Hubs hinweg, daher wird hier der lokale
+        # Multiplexer-Kanal berechnet (0-7).
         mux_channel = self.tof_index % 8
 
         select_mux_channel(self.bus, mux_channel, hub_addr)
 
-        # NUR EIN SENSOR PRO CALL
+        # Lese genau einen Sensor pro Aufruf (non-blocking Zyklus)
         self.sensorwerte[self.tof_index] = tof.get_distance()
 
-        # Hub deaktivieren
+        # Nach dem Lesen den Hub deaktivieren, damit der I2C-Bus wieder frei ist
         self.bus.write_byte(hub_addr, 0x00)
 
-        # Round Robin advance
+        # Round-robin Index weiterzählen (zyklisch über alle Sensoren)
         self.tof_index = (self.tof_index + 1) % len(self.tof_list)
 
 
@@ -157,7 +173,7 @@ class RabotAPI:
         dt = now - self._last_time
         self._last_time = now
 
-        #  dt begrenzen (Fals loop hängen bleibt)
+        #  dt begrenzen (falls die Schleife mal hängt), um stabile Integration zu gewährleisten
         dt = max(0.001, min(dt, 0.1))
 
         # Dynamisches alpha basierend auf dt (schneller bei größeren dt, langsamer bei kleineren dt)
@@ -168,7 +184,7 @@ class RabotAPI:
         # dt = 0.02  # Abtastzeit (20 ms → 50 Hz)
         # alpha = 0.8  # Filterkonstante
 
-        # Lese Sensordaten
+        # Aktuelle Accelerometer-Daten (schnell) und Gyro für die Winkelintegration
         ax, ay, az = self.accel['x'], self.accel['y'], self.accel['z']
         gyro = self.mpuSensor.get_gyro_data()
         gx, gy, gz = gyro['x'] - self.gyro_bias['x'], gyro['y'] - self.gyro_bias['y'], gyro['z'] - self.gyro_bias['z']
@@ -239,7 +255,7 @@ class RabotAPI:
             dt = 1e-6
         self._last_time = now
 
-        # update pitch/roll
+        # Aktualisiere Pitch/Roll (erforderlich für tilt-kompensierte Yaw-Berechnung)
         self.getPitchRoll()
         roll_rad = math.radians(self.roll)
         pitch_rad = math.radians(self.pitch)
@@ -353,6 +369,8 @@ class RabotAPI:
         else:
             self.targetAngle = 360 - (self.targetAngle % 360)
         
+        # Rückgabe von `self` ermöglicht chaining (z.B. `obj.calculate_target_angle(...).some_other()`),
+        # wird in diesem Projekt selten benötigt, dient aber der API-Kompatibilität.
         return self
         
     def stop(self):

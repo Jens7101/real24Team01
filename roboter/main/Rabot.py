@@ -1,3 +1,10 @@
+"""
+Rabot control script
+--------------------
+Hauptprogramm für den Roboter: enthält die Klasse `Rabot` mit einfachen
+Zustandsautomaten (für Demo-Fahrt), Sensor-Threads und Steuerungsroutinen.
+"""
+
 from doctest import debug
 from enum import Enum
 from RabotAPI import *
@@ -13,7 +20,11 @@ class Rabot:
 
     def __init__(self):
 
-        '''Stellvertreter Objekt des Roboters erstellen'''
+        '''Erzeuge Rabot-Hilfsobjekte.
+
+        `RabotAPI` kapselt Hardwarezugriff; hier werden Standardparameter gesetzt
+        und die interne Queue für Ereignisse (z. B. Hindernisse) angelegt.
+        '''
         self.rabot = RabotAPI()
         self.q = queue.Queue()
         # Parameter setzen
@@ -25,19 +36,23 @@ class Rabot:
 
     
     def Thread_read_sensors(self):
+        # Hintergrund-Thread: liest in konstanter Frequenz alle Sensorwerte aus
         while self.ProgrammStatus:
             self.rabot.getsensorValues()
             debug = False
             if debug:
                 print("Sensorwerte: " + str(self.rabot.sensorwerte))
                 print("Pitch: " + str(self.rabot.pitch) + " Roll: " + str(self.rabot.roll))
-            time.sleep(0.02) # Frequenz in der die Sensorwerte aktualisiert werden
+            # 50 Hz Messfrequenz (20 ms)
+            time.sleep(0.02)
 
 
     def Thread_detect_obstacle(self):
         hindernis_aktiv = False
         print ("Hinderniserkennung gestartet")
 
+        # Hintergrund-Thread: prüft schnell nur die relevanten Front-Sensoren und
+        # signalisiert ein Event in der Queue, wenn ein Hindernis erkannt wurde.
         while self.ProgrammStatus:
             frontSensors = self.rabot.sensorwerte[4:6] # Sensoren für Hinderniserkennung
             debug = False
@@ -45,28 +60,32 @@ class Rabot:
                 print("Front Sensorwerte: " + str(frontSensors))
             if (frontSensors[0] < self.DistanzSolarpanel or frontSensors[1] < self.DistanzSolarpanel) and not hindernis_aktiv:
                 hindernis_aktiv = True
-                self.q.put("obstacle_detected") #Thred meldet Hindernis erkannt
+                # Thread meldet: Hindernis erkannt
+                self.q.put("obstacle_detected")
             elif (frontSensors[0] >= self.DistanzSolarpanel and frontSensors[1] >= self.DistanzSolarpanel) and hindernis_aktiv:
                 hindernis_aktiv = False
-            time.sleep(1 / 1000) # Frequenz in der die Hinderniserkennung überprüft wird
+            # Sehr schnell prüfen (hier 1 ms); bei Bedarf erhöhen, um CPU-Last zu reduzieren
+            time.sleep(1 / 1000)
 
 
     def first_demo_programm_Motor(self):
+        # Definiere Zustände des einfachen Zustandsautomaten (für Demonstrationsfahrt)
         Zustand = Enum ('Zustand', ['RobiDrehtBisHorizontal', 'RobiFährVorwärts1',
             'RobiAusrichten', 'RobiVierteldrehungLinks1', 'RobiFährtVorwärts2',
             'RobiDreht180', 'ViertelDrehungRechts_Zy', 'RobiFährtRunter_Zy',
             'ViertelDrehungLinks_Zy', 'RobiFährtVorwärts_Zy', 'RobiStoppt',
-            "RobiFährtVorwärtsLetzteReihe", "HindernisErkannt"])
-        
+            "RobiFährtVorwärtsLetzteReihe", "HindernisErkannt"] )
+
         self.ProgrammStatus = True
 
-        # Starte Thread für Sensorwerte auslesen
+        # Starte Thread zum regelmäßigen Auslesen aller Sensoren
         read_sensors_thread = threading.Thread(target=self.Thread_read_sensors)
         read_sensors_thread.start()
 
-        time.sleep(5) # Warte kurz, damit die Sensorwerte initialisiert werden bevor die Hinderniserkennung startet
+        # Kurz warten, damit erste Sensorwerte vorliegen
+        time.sleep(5)
 
-        # Starte Thread für Hindernis Erkennung
+        # Starte Thread für Hinderniserkennung (setzt Events in self.q)
         obstacle_thread = threading.Thread(target=self.Thread_detect_obstacle)
         obstacle_thread.start()
 
