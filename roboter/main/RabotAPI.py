@@ -9,15 +9,16 @@ import flink
 import time
 import math
 import socket
-import threading
 
 class RabotAPI:
     
     def __init__(self):
         self.sensorwerte = [0] * 15
-        self.i2c_lock = threading.RLock()
         # I2C-Busnummer (je nach Board kann das 0 oder 1 sein, bitte mit `i2cdetect -l` prüfen)
         self.I2C_BUS = 0 # i2c-0 → MIO10/11
+
+        self._last_pitchroll_time = 0
+        self._last_yaw_time = 0
 
         ## -----------mpu6050 Sensor erstellen-----
         self.mpuSensor = mpu6050(0x68, self.I2C_BUS)
@@ -45,6 +46,23 @@ class RabotAPI:
         # Initialisiere die ToF-Sensoren über den PA.Hub
         self.tofs = init_vl53l0xx(self.I2C_BUS, self.Hubs)
 
+        # --- FLATTEN + ROUND ROBIN SETUP ---
+        self.tof_list = []
+        self.sensorwerte = []
+
+        for hub_addr, sensors in self.tofs:
+            for tof in sensors:
+                self.tof_list.append({
+                    "hub": hub_addr,
+                    "tof": tof
+                })
+                self.sensorwerte.append(0)
+
+        self.tof_index = 0
+
+        # I2C Bus nur EINMAL öffnen
+        self.bus = smbus.SMBus(self.I2C_BUS)
+
         ## -----------Motoren------------
         '''
         self.rangeForward = [12, 13]
@@ -65,10 +83,10 @@ class RabotAPI:
         # Pitch/Roll in degrees (used elsewhere in your code)
         
         # Lese Sensordaten
-        accel = self.mpuSensor.get_accel_data()
-        ax, ay, az = accel['x'], accel['y'], accel['z']
-        gyro = self.mpuSensor.get_gyro_data()
-        gx, gy, gz = gyro['x'], gyro['y'], gyro['z']
+        self.accel = self.mpuSensor.get_accel_data()
+        ax, ay, az = self.accel['x'], self.accel['y'], self.accel['z']
+        self.gyro = self.mpuSensor.get_gyro_data()
+        gx, gy, gz = self.gyro['x'], self.gyro['y'], self.gyro['z']
 
         # Offset-Werte für Kalibrierung (anpassen nach Bedarf)
         self.offset_roll = 0.0
@@ -103,70 +121,41 @@ class RabotAPI:
         self.brush_dec = 5000
 
 
+    def getsensorValues(self):
+        # 1 TOF Sensor pro Zyklus (non-blocking)
+        self.getDistSensorValues()
+
+        # MPU immer schnell auslesen
+        self.accel = self.mpuSensor.get_accel_data()
+        self.gyro = self.mpuSensor.get_gyro_data()
+        self.get_absolute_yaw()
         
     def getDistSensorValues(self):
-        
-        with self.i2c_lock:
-        
-            self.bus = smbus.SMBus(self.I2C_BUS)  # I2C-Bus öffnen
-            i = 0
+        entry = self.tof_list[self.tof_index]
 
-            for Hub in self.tofs:
-                PA_HUB_I2C_ADDRESS = Hub[0]
-                
-                muxChanel = 0
-                for tof in Hub[1]:
-                    select_mux_channel(self.bus, muxChanel, PA_HUB_I2C_ADDRESS)  # Wähle den entsprechenden Kanal
-                    self.sensorwerte[i] = tof.get_distance()
-                    i += 1
-                    muxChanel += 1
-                self.bus.write_byte(PA_HUB_I2C_ADDRESS, 0x00) # Alle Kanäle am Hub deaktivieren damit Bussprobleme vermieden werden
+        hub_addr = entry["hub"]
+        tof = entry["tof"]
 
-    
-    def getPitchRoll_eigene_Funktion(self):
+        # Kanal = Index innerhalb Hub (robust über modulo)
+        mux_channel = self.tof_index % 8
 
-        n = 10
-        accel_data = {'x': 0.0, 'y': 0.0, 'z': 0.0}
-        gyro_data = {'x': 0.0, 'y': 0.0, 'z': 0.0}
+        select_mux_channel(self.bus, mux_channel, hub_addr)
 
-        for i in range(n):
-            # Retrieve accelerometer data from the sensor.
-            accel_data = self.mpuSensor.get_accel_data()
-            time.sleep(0.01)  # Kleine Verzögerung zwischen den Messungen
-            # Retrieve gyroscope data from the sensor.
-            gyro_data = self.mpuSensor.get_gyro_data()
-            time.sleep(0.01)  # Kleine Verzögerung zwischen den Messungen
-            # Sum the data for averaging.
-            for key in accel_data:
-                accel_data[key] += accel_data[key]
-            for key in gyro_data:
-                gyro_data[key] += gyro_data[key]    
-        
-        # Average the data over n samples.
-        accel_data = {key: value / n for key, value in accel_data.items()}
-        gyro_data = {key: value / n for key, value in gyro_data.items()}
+        # NUR EIN SENSOR PRO CALL
+        self.sensorwerte[self.tof_index] = tof.get_distance()
+
+        # Hub deaktivieren
+        self.bus.write_byte(hub_addr, 0x00)
+
+        # Round Robin advance
+        self.tof_index = (self.tof_index + 1) % len(self.tof_list)
 
 
-
-        # Print accelerometer data.
-        print("Accelerometer data")
-        print("x: " + str(accel_data['x']))
-        print("y: " + str(accel_data['y']))
-        print("z: " + str(accel_data['z']))
-
-        # Print gyroscope data.
-        '''print("Gyroscope data")
-        print("x: " + str(gyro_data['x']))
-        print("y: " + str(gyro_data['y']))
-        print("z: " + str(gyro_data['z']))'''
-
-
-    
     def getPitchRoll(self):
         # echtzeit dt
         now = time.time()
-        dt = now - self._last_time
-        self._last_time = now
+        dt = now - self._last_pitchroll_time
+        self._last_pitchroll_time = now
 
         #  dt begrenzen (Fals loop hängen bleibt)
         dt = max(0.001, min(dt, 0.1))
@@ -180,10 +169,9 @@ class RabotAPI:
         # alpha = 0.8  # Filterkonstante
 
         # Lese Sensordaten
-        accel = self.mpuSensor.get_accel_data()
-        ax, ay, az = accel['x'], accel['y'], accel['z']
-        gyro = self.mpuSensor.get_gyro_data()
-        gx, gy, gz = gyro['x'] - self.gyro_bias['x'], gyro['y'] - self.gyro_bias['y'], gyro['z'] - self.gyro_bias['z']
+        
+        ax, ay, az = self.accel['x'], self.accel['y'], self.accel['z']
+        gx, gy, gz = self.gyro['x'] - self.gyro_bias['x'], self.gyro['y'] - self.gyro_bias['y'], self.gyro['z'] - self.gyro_bias['z']
         
 
         # Beschleunigung → Roll/Pitch
@@ -214,30 +202,6 @@ class RabotAPI:
         self.gyro_bias['z'] = sz / samples
         print(f"Gyro bias calibrated: {self.gyro_bias}")
 
-    ''' 
-    zweite varsion der getPitchRoll funktion ohne komplementärfilter
-    löschen wenn rest funtioniert
-    --------------
-
-
-    def getPitchRoll(self):
-        """
-        Reads accelerometer and computes pitch and roll (in degrees).
-        Stores self.pitch and self.roll (degrees).
-        """
-        accel = self.mpuSensor.get_accel_data()
-        ax, ay, az = accel['x'], accel['y'], accel['z']
-
-        # compute roll and pitch (radians)
-        roll_rad = math.atan2(ay, az)
-        pitch_rad = math.atan2(-ax, math.sqrt(ay * ay + az * az))
-
-        # store degrees for compatibility
-        self.roll = math.degrees(roll_rad)
-        self.pitch = math.degrees(pitch_rad)
-
-        return self.pitch, self.roll
-        '''
         
     def get_absolute_yaw(self):
         """
@@ -246,46 +210,39 @@ class RabotAPI:
         Updates self._yaw (degrees).
         """
 
-        with self.i2c_lock:
-            now = time.time()
-            dt = now - getattr(self, '_last_time', now)
-            if dt <= 0:
-                dt = 1e-6
-            self._last_time = now
+        now = time.time()
+        dt = now - self._last_yaw_time
 
-            # update pitch/roll
-            self.getPitchRoll()
-            roll_rad = math.radians(self.roll)
-            pitch_rad = math.radians(self.pitch)
-            time.sleep(0.001)  # Kleine Verzögerung für stabilere Messung
-            # read gyro (assumed in deg/s), subtract bias, convert to rad/s
-            g = self.mpuSensor.get_gyro_data()
-            gx = math.radians(g['x'] - self.gyro_bias['x'])
-            gy = math.radians(g['y'] - self.gyro_bias['y'])
-            gz = math.radians(g['z'] - self.gyro_bias['z'])
+        if dt <= 0:
+            dt = 1e-6
+        self._last_yaw_time = now
 
-            # compute yaw rate (psi_dot) from body rates using Euler relation:
-            # psi_dot = sin(phi)/cos(theta) * q + cos(phi)/cos(theta) * r
-            # where p=gx, q=gy, r=gz and phi=roll, theta=pitch
-            cos_pitch = math.cos(pitch_rad)
-            if abs(cos_pitch) < 1e-3:
-                # Gimbal lock: skip update to avoid large errors
-                return self._yaw
+        # update pitch/roll
+        self.getPitchRoll()
+        roll_rad = math.radians(self.roll)
+        pitch_rad = math.radians(self.pitch)
+        time.sleep(0.001)  # Kleine Verzögerung für stabilere Messung
+        # read gyro (assumed in deg/s), subtract bias, convert to rad/s
+        gx = math.radians(self.gyro['x'] - self.gyro_bias['x'])
+        gy = math.radians(self.gyro['y'] - self.gyro_bias['y'])
+        gz = math.radians(self.gyro['z'] - self.gyro_bias['z'])
 
-            psi_dot = (math.sin(roll_rad) / cos_pitch) * gy + (math.cos(roll_rad) / cos_pitch) * gz
-
-            # integrate (yaw in radians)
-            self._yaw_rad += psi_dot * dt
-            # normalize to [0,360)
-            self._yaw = (math.degrees(self._yaw_rad)) % 360.0
-
+        # compute yaw rate (psi_dot) from body rates using Euler relation:
+        # psi_dot = sin(phi)/cos(theta) * q + cos(phi)/cos(theta) * r
+        # where p=gx, q=gy, r=gz and phi=roll, theta=pitch
+        cos_pitch = math.cos(pitch_rad)
+        if abs(cos_pitch) < 1e-3:
+            # Gimbal lock: skip update to avoid large errors
             return self._yaw
 
-    def reset_yaw(self):
-        self._yaw_rad = 0.0
-        self._yaw = 0.0
-        self._last_time = time.time()
+        psi_dot = (math.sin(roll_rad) / cos_pitch) * gy + (math.cos(roll_rad) / cos_pitch) * gz
 
+        # integrate (yaw in radians)
+        self._yaw_rad += psi_dot * dt
+        # normalize to [0,360)
+        self._yaw = (math.degrees(self._yaw_rad)) % 360.0
+
+        return self._yaw
 
     def drive(self, speed: int):
         # Speed range: 100 bis -100. - -> drive backword

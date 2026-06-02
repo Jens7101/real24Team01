@@ -61,4 +61,4 @@ def select_mux_channel(bus, channel, PA_HUB_I2C_ADDRESS):
         Der Multiplexer-Kanal (0-7), auf dem der gewünschte Sensor liegt.
     """
     bus.write_byte(PA_HUB_I2C_ADDRESS, 1 << channel)
-    time.sleep(0.02)  # Kleine Verzögerung nach Kanalwechsel
+    time.sleep(0.0005)  # Kleine Verzögerung nach Kanalwechsel
