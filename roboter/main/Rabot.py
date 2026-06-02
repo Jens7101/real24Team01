@@ -31,6 +31,7 @@ class Rabot:
             if debug:
                 print("Sensorwerte: " + str(self.rabot.sensorwerte))
                 print("Pitch: " + str(self.rabot.pitch) + " Roll: " + str(self.rabot.roll))
+            time.sleep(0.02) # Frequenz in der die Sensorwerte aktualisiert werden
 
 
     def Thread_detect_obstacle(self):
@@ -47,7 +48,7 @@ class Rabot:
                 self.q.put("obstacle_detected") #Thred meldet Hindernis erkannt
             elif (frontSensors[0] >= self.DistanzSolarpanel and frontSensors[1] >= self.DistanzSolarpanel) and hindernis_aktiv:
                 hindernis_aktiv = False
-            time.sleep(0.02) # Frequenz in der die Hinderniserkennung überprüft wird
+            time.sleep(1 / 1000) # Frequenz in der die Hinderniserkennung überprüft wird
 
 
     def first_demo_programm_Motor(self):
@@ -193,6 +194,10 @@ class Rabot:
                         self.rabot.startup_brushes()
 
                 case Zustand.ViertelDrehungRechts_Zy:
+                    debug = True
+                    if debug:
+                        print("Aktueller Yaw: " + str(self.rabot._yaw))
+                        print("Ziel Yaw: " + str(self.rabot.targetAngle))
                     if self.rabot.targetAngle - self.tol_angel < self.rabot._yaw < self.rabot.targetAngle + self.tol_angel:
                         print(Drehen)
                         if Drehen == 1:
@@ -203,15 +208,17 @@ class Rabot:
                             self.rabot.crawler_drive(rpm)
                             print("Rabot fährt runter")
                         elif Drehen == 2:
-                            zustand = Zustand.RobiFährtVorwärts_Zy
-                            # Parameter für Zyklus
-                            rechtsLinks = "left"
-                            self.rabot.crawler_drive(rpm)
-                            print("Rabot fährt geradeaus")
-                        elif lastRow == True:
-                            zustand = Zustand.RobiFährtVorwärtsLetzteReihe
-                            self.rabot.crawler_drive(rpm)
-                            print("Rabot fährt die letzte Reihe vorwärts")
+                            if lastRow == True:
+                                zustand = Zustand.RobiFährtVorwärtsLetzteReihe
+                                self.rabot.crawler_drive(rpm)
+                                print("Rabot fährt die letzte Reihe vorwärts")
+                            else:
+                                zustand = Zustand.RobiFährtVorwärts_Zy
+                                # Parameter für Zyklus
+                                rechtsLinks = "left"
+                                # Rabot fährt geradeaus
+                                self.rabot.crawler_drive(rpm)
+                                print("Rabot fährt geradeaus")
 
 
 
@@ -258,8 +265,11 @@ class Rabot:
                             print("Rabot macht eine Vierteldrehung nach rechts") 
 
                 case Zustand.ViertelDrehungLinks_Zy:
-                    if self.rabot.targetAngle -self.tol_angel < self.rabot._yaw < self.rabot.targetAngle + self.tol_angel:
-                        
+                    if debug:
+                        print("Aktueller Yaw: " + str(self.rabot._yaw))
+                        print("Ziel Yaw: " + str(self.rabot.targetAngle))
+                    if self.rabot.targetAngle - self.tol_angel < self.rabot._yaw < self.rabot.targetAngle + self.tol_angel:
+                        print(Drehen)
                         if Drehen == 1:
                             zustand = Zustand.RobiFährtRunter_Zy
                             self.timer_abgelaufen = False

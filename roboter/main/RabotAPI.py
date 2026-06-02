@@ -154,8 +154,8 @@ class RabotAPI:
     def getPitchRoll(self):
         # echtzeit dt
         now = time.time()
-        dt = now - self._last_pitchroll_time
-        self._last_pitchroll_time = now
+        dt = now - self._last_time
+        self._last_time = now
 
         #  dt begrenzen (Fals loop hängen bleibt)
         dt = max(0.001, min(dt, 0.1))
@@ -169,9 +169,9 @@ class RabotAPI:
         # alpha = 0.8  # Filterkonstante
 
         # Lese Sensordaten
-        
         ax, ay, az = self.accel['x'], self.accel['y'], self.accel['z']
-        gx, gy, gz = self.gyro['x'] - self.gyro_bias['x'], self.gyro['y'] - self.gyro_bias['y'], self.gyro['z'] - self.gyro_bias['z']
+        gyro = self.mpuSensor.get_gyro_data()
+        gx, gy, gz = gyro['x'] - self.gyro_bias['x'], gyro['y'] - self.gyro_bias['y'], gyro['z'] - self.gyro_bias['z']
         
 
         # Beschleunigung → Roll/Pitch
@@ -202,6 +202,30 @@ class RabotAPI:
         self.gyro_bias['z'] = sz / samples
         print(f"Gyro bias calibrated: {self.gyro_bias}")
 
+    ''' 
+    zweite varsion der getPitchRoll funktion ohne komplementärfilter
+    löschen wenn rest funtioniert
+    --------------
+
+
+    def getPitchRoll(self):
+        """
+        Reads accelerometer and computes pitch and roll (in degrees).
+        Stores self.pitch and self.roll (degrees).
+        """
+        accel = self.mpuSensor.get_accel_data()
+        ax, ay, az = accel['x'], accel['y'], accel['z']
+
+        # compute roll and pitch (radians)
+        roll_rad = math.atan2(ay, az)
+        pitch_rad = math.atan2(-ax, math.sqrt(ay * ay + az * az))
+
+        # store degrees for compatibility
+        self.roll = math.degrees(roll_rad)
+        self.pitch = math.degrees(pitch_rad)
+
+        return self.pitch, self.roll
+        '''
         
     def get_absolute_yaw(self):
         """
@@ -209,13 +233,11 @@ class RabotAPI:
         Uses gyro bias subtraction and pitch/roll from accel.
         Updates self._yaw (degrees).
         """
-
         now = time.time()
-        dt = now - self._last_yaw_time
-
+        dt = now - getattr(self, '_last_time', now)
         if dt <= 0:
             dt = 1e-6
-        self._last_yaw_time = now
+        self._last_time = now
 
         # update pitch/roll
         self.getPitchRoll()
