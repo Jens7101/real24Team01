@@ -77,16 +77,6 @@ class RabotAPI:
         # I2C-Bus nur einmal öffnen und wiederverwenden (effizienter)
         self.bus = smbus.SMBus(self.I2C_BUS)
 
-        ## -----------Motoren------------
-        '''
-        self.rangeForward = [12, 13]
-        self.rangeBackward = [14, 15]
-
-        for pin in self.rangeForward + self.rangeBackward:  # Listen zusammenführen
-            self.gpio.setDir(pin, True)
-            self.gpio.setValue(pin, False)
-        '''
-
         ## -----------_Yaw Tracking------------
         # Gyro-Bias (deg/s) wird bei `calibrate_gyro()` ermittelt und subtrahiert
         self.gyro_bias = {'x': 0.0, 'y': 0.0, 'z': 0.0}
@@ -113,6 +103,15 @@ class RabotAPI:
         # Kalibriere das Gyroskop (Erwartung: Gerät steht ruhig während Kalibrierung)
         self.calibrate_gyro()
 
+        ## -----------Motoren------------
+        '''
+        self.rangeForward = [12, 13]
+        self.rangeBackward = [14, 15]
+
+        for pin in self.rangeForward + self.rangeBackward:  # Listen zusammenführen
+            self.gpio.setDir(pin, True)
+            self.gpio.setValue(pin, False)
+        '''
 
         #-----------IP-Adressen------------
         self.left_crawler = "192.168.7.10"
